@@ -27,6 +27,153 @@ const PROVENANCE = {
   keeper: "keeper",                 // the companion, speaking for themself
 };
 
+/* ------------------------------------------------------- the two flames --
+ * THE HEARTH: served from localhost by server.py, which holds the key in
+ *   .env -- readings go to /reading, the prism to /prism, records to
+ *   /record/save.
+ * THE WORKER: served as static files (Cloudflare Pages), readings go from
+ *   this browser through the shared COMPANION worker (key server-side
+ *   there); the prism lives in this browser only; records download.
+ * Same chamber, same rite, same laws either way. */
+
+const CONFIG = window.LANTERN_CONFIG || {};
+
+function usingWorker() {
+  const local = ["localhost", "127.0.0.1"].includes(location.hostname);
+  return Boolean(CONFIG.proxyUrl) && (CONFIG.forceWorker === true || !local);
+}
+
+/* The prism the chamber starts with before a family makes it their own. */
+const STARTER_PRISM = {
+  name: "",
+  people: [],
+  common_needs: ["water", "bathroom", "blanket", "go outside"],
+  favorite_words_phrases: [],
+  places: ["kitchen", "porch"],
+  notes_from_family: "",
+};
+
+/* --- worker-flame ports of the hearth's reading pipeline (server.py) ---
+ * Kept behaviorally identical: same labels, same defensive parse, same
+ * collapse-to-unclear. If you change one side, change the other. */
+
+function buildUserMessage(fragment, recentTurns, prism) {
+  const parts = [`VERBATIM FRAGMENT (what the person just said):\n"${fragment}"`];
+
+  if (recentTurns.length) {
+    const turns = recentTurns.map((t) => `${t.speaker}: "${t.text}"`).join("\n");
+    parts.push(`RECENT CONVERSATION (oldest first):\n${turns}`);
+  } else {
+    parts.push("RECENT CONVERSATION: (none yet)");
+  }
+
+  // Send only the prism fields the family actually filled in.
+  const filled = {};
+  for (const [key, value] of Object.entries(prism || {})) {
+    if (value && (!Array.isArray(value) || value.length)) filled[key] = value;
+  }
+  if (Object.keys(filled).length) {
+    parts.push(
+      "THE PRISM (kept by the person and their family):\n" +
+      JSON.stringify(filled, null, 2)
+    );
+  } else {
+    parts.push("THE PRISM: (empty)");
+  }
+
+  return parts.join("\n\n");
+}
+
+function parseModelJson(raw) {
+  const start = raw.indexOf("{");
+  const end = raw.lastIndexOf("}");
+  if (start === -1 || end <= start) return null;
+  try {
+    const parsed = JSON.parse(raw.slice(start, end + 1));
+    return parsed && typeof parsed === "object" && !Array.isArray(parsed) ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+const VALID_CONFIDENCE = new Set(["high", "medium", "low"]);
+
+function sanitizeResult(result) {
+  const unclear = (reason) => ({ unclear: true, candidates: [], reason });
+
+  if (!result || typeof result !== "object") {
+    return unclear("I had trouble reading that. Please try again.");
+  }
+  if (result.unclear === true) {
+    return {
+      unclear: true,
+      candidates: [],
+      reason: String(result.reason || "There wasn't enough there for me to work with."),
+    };
+  }
+  const candidates = [];
+  for (const item of result.candidates || []) {
+    if (!item || typeof item !== "object") continue;
+    const text = String(item.text || "").trim();
+    if (!text) continue;
+    let confidence = String(item.confidence || "").trim().toLowerCase();
+    if (!VALID_CONFIDENCE.has(confidence)) confidence = "low"; // reported, never upgraded
+    candidates.push({ text, confidence });
+    if (candidates.length === 3) break;
+  }
+  if (!candidates.length) {
+    return unclear("I couldn't form a reading of that. Want to try again?");
+  }
+  return { unclear: false, candidates };
+}
+
+/* One reading request, whichever flame is lit. Every failure path returns
+ * an honest "unclear" -- the chamber never crashes and never bluffs. */
+let lastReadingAt = 0;
+
+async function requestReading(fragment) {
+  if (!usingWorker()) {
+    // THE HEARTH: the local server builds the message and holds the key.
+    const resp = await fetch("/reading", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fragment,
+        recent_turns: recentTurns(),
+        context: state.prism,
+      }),
+    });
+    return await resp.json();
+  }
+
+  // THE WORKER: this browser speaks to the shared COMPANION proxy
+  // directly, with the same rite and the same message shape.
+  const wait = (CONFIG.cooldownSeconds || 0) * 1000 - (Date.now() - lastReadingAt);
+  if (wait > 0) await new Promise((r) => setTimeout(r, wait));
+  lastReadingAt = Date.now();
+
+  const resp = await fetch(`${CONFIG.proxyUrl.replace(/\/$/, "")}/v1/messages`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      model: CONFIG.model || "claude-sonnet-4-6",
+      max_tokens: CONFIG.maxTokens || 1000,
+      temperature: CONFIG.temperature ?? 0.3,
+      system: window.LANTERN_RITE,
+      messages: [
+        { role: "user", content: buildUserMessage(fragment, recentTurns(), state.prism) },
+      ],
+    }),
+  });
+  if (!resp.ok) throw new Error(`worker HTTP ${resp.status}`);
+  const message = await resp.json();
+  const raw = (message.content || [])
+    .filter((block) => block.type === "text")
+    .map((block) => block.text)
+    .join("");
+  return sanitizeResult(parseModelJson(raw));
+}
+
 /* ------------------------------------------------------------------ state */
 
 const state = {
@@ -171,16 +318,7 @@ async function handleVoiceFragment(fragment) {
 
   let result;
   try {
-    const resp = await fetch("/reading", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        fragment,
-        recent_turns: recentTurns(),
-        context: state.prism,
-      }),
-    });
-    result = await resp.json();
+    result = await requestReading(fragment);
   } catch (err) {
     console.warn("reading failed:", err);
     result = {
@@ -533,11 +671,21 @@ const fromLines = (text) =>
   text.split("\n").map((line) => line.trim()).filter(Boolean);
 
 async function loadPrism() {
-  try {
-    const resp = await fetch("/prism");
-    if (resp.ok) state.prism = await resp.json();
-  } catch {
-    state.prism = {};
+  if (usingWorker()) {
+    // THE WORKER: the prism lives in this browser, and nowhere else.
+    try {
+      const stored = localStorage.getItem("lantern-prism");
+      state.prism = stored ? JSON.parse(stored) : { ...STARTER_PRISM };
+    } catch {
+      state.prism = { ...STARTER_PRISM };
+    }
+  } else {
+    try {
+      const resp = await fetch("/prism");
+      if (resp.ok) state.prism = await resp.json();
+    } catch {
+      state.prism = {};
+    }
   }
   fillPrismForm();
   renderQuickWords();
@@ -566,6 +714,14 @@ function readPrismForm() {
 
 async function savePrismForm() {
   const prism = readPrismForm();
+  if (usingWorker()) {
+    localStorage.setItem("lantern-prism", JSON.stringify(prism));
+    state.prism = prism; // takes effect on the very next reading
+    renderQuickWords();
+    $("prism-status").textContent =
+      "Saved on this device. The prism refracts from the next reading on.";
+    return;
+  }
   try {
     const resp = await fetch("/prism", {
       method: "POST",
@@ -591,6 +747,11 @@ async function clearPrism() {
   };
   fillPrismForm();
   renderQuickWords();
+  if (usingWorker()) {
+    localStorage.setItem("lantern-prism", JSON.stringify(state.prism));
+    $("prism-status").textContent = "Cleared. Nothing personal remains in future readings.";
+    return;
+  }
   try {
     await fetch("/prism", {
       method: "POST",
@@ -610,6 +771,25 @@ async function saveRecord() {
     $("record-status").textContent = "Nothing to keep yet.";
     return;
   }
+
+  if (usingWorker()) {
+    // THE WORKER: no server holds the record -- it downloads to the
+    // device, same JSON shape the hearth writes, provenance and all.
+    const stamp = new Date().toISOString().slice(0, 19).replace(/[-:]/g, "").replace("T", "-");
+    const filename = `record-${stamp}.json`;
+    const blob = new Blob(
+      [JSON.stringify({ started: state.started, turns: state.record }, null, 2) + "\n"],
+      { type: "application/json" }
+    );
+    const link = document.createElement("a");
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    link.click();
+    URL.revokeObjectURL(link.href);
+    $("record-status").textContent = `Kept as a download: ${filename}`;
+    return;
+  }
+
   try {
     const resp = await fetch("/record/save", {
       method: "POST",

@@ -20,7 +20,7 @@ speaks for anyone. The lantern only shines; it does not write.
 
 ---
 
-## Setup
+## Setup — the hearth (local)
 
 ```
 pip install -r requirements.txt
@@ -31,6 +31,26 @@ python server.py
 Open http://localhost:8000 in Chrome and allow the microphone. Without a
 key the lantern still listens and keeps the verbatim record; readings need
 the flame.
+
+## Deploy — the worker (Cloudflare)
+
+The chamber also runs serverless, on the estate's existing plumbing — the
+shared COMPANION worker that already serves the other chambers:
+
+1. **Cloudflare Pages** → create a project from this repo. Framework
+   preset: none. Build command: none. **Build output directory: `static`.**
+2. **Allow the origin.** Add the new domain (`https://<project>.pages.dev`
+   and any custom domain) to the worker's `ALLOWED_ORIGINS` — estate repo
+   → `proxy/wrangler.toml` `[vars]`, then `npx wrangler deploy` (or edit
+   the variable in the Cloudflare dashboard).
+3. That's all. `static/config.js` already points at
+   `companion.jethomasphd.workers.dev`.
+
+Served from anywhere but localhost, the chamber sends readings from the
+browser straight through the worker — the API key never leaves the worker.
+The prism then lives in the visitor's browser only, and "Keep the record"
+downloads the JSON to their device. Same chamber, same rite, same laws:
+the rite lives in `static/rite.js`, one copy read by both flames.
 
 ---
 
@@ -86,11 +106,16 @@ not a style choice.
 
 ## The pieces
 
-- `server.py` — the whole backend in one readable file: serves the chamber,
-  `POST /reading` (the model call and the Lantern's Rite), `GET/POST /prism`,
+- `server.py` — the hearth: the whole local backend in one readable file:
+  serves the chamber, `POST /reading` (the model call), `GET/POST /prism`,
   `POST /record/save`.
-- `static/` — one page, plain HTML/JS/CSS. Mic capture and speech use the
-  browser's own Web Speech APIs, so the only secret is the server-side key.
+- `static/` — one page, plain HTML/JS/CSS, no build step; deployable as-is
+  to Cloudflare Pages. Mic capture and speech use the browser's own Web
+  Speech APIs, so the only secret is the key held by the hearth or the
+  worker — never in these files.
+- `static/rite.js` — the Lantern's Rite, one copy read by both flames.
+- `static/config.js` — deployment configuration: the worker URL and model.
+  Nothing secret.
 - `prism.json` — the person-owned prism, the only personalization
   mechanism. It selects which knowledge dominates a reading — this person's
   own words and world, not the culture's composite patient. Editable and
