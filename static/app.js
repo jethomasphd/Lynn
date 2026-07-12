@@ -1,25 +1,38 @@
 /* GetThrough front-end.
  *
  * The five invariants (SEED.md section 2) live here as much as in the server:
- *   1. the verbatim transcript is always visible;
- *   2. nothing is spoken or logged as the patient's meaning until they tap it;
- *   3. "None of these" is always offered, same size as the candidates;
- *   4. every log entry carries a provenance chip;
- *   5. when the model can't tell, we show that honestly.
- *
- * Build step 2: mic capture, live transcript, mode toggle.
+ *   1. the verbatim transcript is always visible -- it is logged the moment
+ *      the mic stops, and it sits above the cards that interpret it;
+ *   2. nothing is spoken or logged as the patient's meaning until they tap
+ *      it -- speak() is called from exactly two places: a confirmation tap
+ *      and the "Say it again" button on an already-confirmed turn;
+ *   3. "None of these" is always the last card, same size as the others;
+ *   4. every log entry carries one of exactly three provenance chips;
+ *   5. when the model can't tell, we show that honestly and invite another
+ *      try -- no forced guesses.
  */
 
 "use strict";
 
 const $ = (id) => document.getElementById(id);
 
+const PROVENANCE = {
+  verbatim: "patient-verbatim",
+  confirmed: "patient-confirmed-interpretation",
+  companion: "companion",
+};
+
 /* ------------------------------------------------------------------ state */
 
 const state = {
-  mode: "patient",     // "patient" | "companion" -- who the mic belongs to now
-  listening: false,    // is the mic currently capturing?
-  heardFinal: "",      // finalized transcript pieces accumulated this press
+  mode: "patient",       // "patient" | "companion" -- who the mic belongs to
+  listening: false,      // is the mic currently capturing?
+  heardFinal: "",        // finalized transcript pieces accumulated this press
+  log: [],               // the session log: turns with provenance (SEED.md s8)
+  started: new Date().toISOString(),  // when this session began
+  pending: null,         // { fragment, candidates } awaiting confirm/reject
+  context: {},           // parsed context.json, fetched from the server
+  voiceRate: 1.0,        // TTS rate, set by the settings slider (0.7-1.2)
 };
 
 /* ----------------------------------------------- speech capture (the mic) */
@@ -78,6 +91,9 @@ function setupRecognition() {
 }
 
 function startListening() {
+  // Starting over withdraws any cards still on screen -- the person chose
+  // to try again, which is always allowed and never logged against them.
+  clearResponseArea();
   state.heardFinal = "";
   renderTranscript("", "");
   state.listening = true;
@@ -134,18 +150,296 @@ function renderTranscript(finalText, interimText) {
   }
 }
 
-/* --------------------------------------------------- fragment routing */
-/* Placeholders in build step 2 -- the interpretation flow, cards, TTS and
- * the provenance log arrive in build steps 3-4. */
+/* ------------------------------------------------- the interpretation flow */
 
-function handlePatientFragment(fragment) {
-  console.log("patient fragment (interpretation arrives in step 3/4):", fragment);
-  $("mic-status").textContent = `Heard: “${fragment}”`;
+async function handlePatientFragment(fragment) {
+  // Invariant 1: the raw fragment enters the log first, before any
+  // interpretation exists, and is never cleaned up or replaced.
+  addTurn({ speaker: "patient", provenance: PROVENANCE.verbatim, text: fragment });
+
+  state.pending = { fragment, candidates: [] };
+  $("response-area").classList.remove("hidden");
+  $("fragment-echo-text").textContent = `“${fragment}”`;
+  $("cards").innerHTML = "";
+  $("unclear-panel").classList.add("hidden");
+  $("thinking").classList.remove("hidden");
+
+  let result;
+  try {
+    const resp = await fetch("/interpret", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        fragment,
+        recent_turns: recentTurns(),
+        context: state.context,
+      }),
+    });
+    result = await resp.json();
+  } catch (err) {
+    console.warn("interpret failed:", err);
+    result = {
+      unclear: true,
+      candidates: [],
+      reason: "I couldn't reach the interpreter just now. Please try again.",
+    };
+  }
+
+  $("thinking").classList.add("hidden");
+
+  // Ignore stale replies if the person already started a new recording.
+  if (!state.pending || state.pending.fragment !== fragment) return;
+
+  if (result.unclear) {
+    showUnclear(result.reason || "");
+  } else {
+    state.pending.candidates = result.candidates;
+    renderCards(result.candidates);
+  }
 }
 
 function handleCompanionTurn(text) {
-  console.log("companion turn (log arrives in step 4):", text);
-  $("mic-status").textContent = `Companion said: “${text}”`;
+  // Companion speech skips interpretation entirely -- it is context, spoken
+  // by someone who can already speak for themself.
+  addTurn({ speaker: "companion", provenance: PROVENANCE.companion, text });
+  $("mic-status").textContent = "Added to the log.";
+}
+
+/* The last 6 turns, as context for the next interpretation. A verbatim
+ * fragment is skipped when the very next turn is its confirmed meaning,
+ * so the model sees each utterance once, in its clearest form. */
+function recentTurns() {
+  const turns = [];
+  for (let i = 0; i < state.log.length; i++) {
+    const turn = state.log[i];
+    const next = state.log[i + 1];
+    if (
+      turn.provenance === PROVENANCE.verbatim &&
+      next &&
+      next.provenance === PROVENANCE.confirmed &&
+      next.source_fragment === turn.text
+    ) {
+      continue;
+    }
+    turns.push({ speaker: turn.speaker, text: turn.text });
+  }
+  return turns.slice(-6);
+}
+
+/* --------------------------------------------------------- candidate cards */
+
+function renderCards(candidates) {
+  const box = $("cards");
+  box.innerHTML = "";
+  candidates.forEach((candidate, i) => {
+    box.appendChild(
+      buildCard({
+        number: String(i + 1),
+        text: candidate.text,
+        confidence: candidate.confidence,
+        onTap: () => confirmMeaning(candidate.text),
+      })
+    );
+  });
+  // Invariant 3: rejecting is always offered, same size and prominence.
+  box.appendChild(
+    buildCard({
+      number: "✕",
+      text: "None of these — let me try again.",
+      none: true,
+      onTap: rejectAll,
+    })
+  );
+}
+
+function buildCard({ number, text, confidence, none, onTap }) {
+  const card = document.createElement("button");
+  card.className = none ? "card none" : "card";
+  card.type = "button";
+  card.setAttribute(
+    "aria-label",
+    none ? "None of these, let me try again" : `Choice ${number}: ${text}`
+  );
+
+  const badge = document.createElement("span");
+  badge.className = "card-number";
+  badge.textContent = number;
+  card.appendChild(badge);
+
+  const body = document.createElement("span");
+  body.className = "card-text";
+  body.textContent = text;
+  card.appendChild(body);
+
+  // Confidence is information, not decoration -- it is always shown.
+  if (confidence) {
+    const tag = document.createElement("span");
+    tag.className = "card-confidence";
+    tag.textContent = confidence;
+    card.appendChild(tag);
+  }
+
+  card.addEventListener("click", onTap);
+  return card;
+}
+
+/* Confirmation: the single moment interpretation becomes the patient's
+ * meaning -- because the patient made it so with a deliberate tap. */
+function confirmMeaning(chosenText) {
+  const pending = state.pending;
+  if (!pending) return;
+
+  const rejected = pending.candidates
+    .map((c) => c.text)
+    .filter((t) => t !== chosenText);
+
+  // Invariant 2: TTS happens here, after the tap, and nowhere earlier.
+  speak(chosenText);
+
+  addTurn({
+    speaker: "patient",
+    provenance: PROVENANCE.confirmed,
+    text: chosenText,
+    source_fragment: pending.fragment,   // the audit trail: what was said,
+    rejected_candidates: rejected,       // what was offered, what was chosen
+  });
+
+  clearResponseArea();
+  $("mic-status").textContent = "Spoken aloud and added to the log.";
+}
+
+function rejectAll() {
+  // No interpretation is logged. The verbatim fragment already stands in
+  // the log on its own -- rejecting costs the person nothing.
+  const pending = state.pending;
+  showUnclear("");
+  $("unclear-panel").querySelector(".unclear-title").textContent =
+    "Okay — none of those.";
+  if (pending) state.pending = { fragment: pending.fragment, candidates: [] };
+}
+
+function showUnclear(reason) {
+  $("cards").innerHTML = "";
+  const panel = $("unclear-panel");
+  panel.querySelector(".unclear-title").textContent = "I couldn’t tell what you meant.";
+  $("unclear-reason").textContent = reason || "";
+  panel.classList.remove("hidden");
+}
+
+function clearResponseArea() {
+  state.pending = null;
+  $("response-area").classList.add("hidden");
+  $("cards").innerHTML = "";
+  $("unclear-panel").classList.add("hidden");
+  $("thinking").classList.add("hidden");
+  $("type-input").value = "";
+}
+
+/* Typing path: the typed text becomes one more card. It still takes the
+ * confirming tap -- typing never skips confirmation (invariant 2). */
+function offerTypedCandidate() {
+  const text = $("type-input").value.trim();
+  if (!text || !state.pending) return;
+  $("unclear-panel").classList.add("hidden");
+  const box = $("cards");
+  box.innerHTML = "";
+  box.appendChild(
+    buildCard({
+      number: "✎",
+      text,
+      onTap: () => confirmMeaning(text),
+    })
+  );
+  box.appendChild(
+    buildCard({
+      number: "✕",
+      text: "Not this — let me try again.",
+      none: true,
+      onTap: rejectAll,
+    })
+  );
+}
+
+/* ------------------------------------------------------- text-to-speech */
+
+/* speak() is invoked from confirmMeaning() and the "Say it again" button
+ * only. If you are adding a third call site, stop: it almost certainly
+ * violates invariant 2. */
+function speak(text) {
+  window.speechSynthesis.cancel(); // never overlap two utterances
+  const utterance = new SpeechSynthesisUtterance(text);
+  utterance.rate = state.voiceRate;
+  window.speechSynthesis.speak(utterance);
+}
+
+/* -------------------------------------------------- the conversation log */
+
+function addTurn(turn) {
+  state.log.push({ t: new Date().toISOString(), ...turn });
+  renderLog();
+}
+
+function renderLog() {
+  const list = $("log");
+  list.innerHTML = "";
+  $("log-empty").classList.toggle("hidden", state.log.length > 0);
+
+  for (const turn of state.log) {
+    const item = document.createElement("li");
+    item.className = "log-entry";
+
+    const top = document.createElement("div");
+    top.className = "log-entry-top";
+
+    const chip = document.createElement("span");
+    chip.className = "chip " + chipClass(turn.provenance);
+    chip.textContent = turn.provenance;
+    top.appendChild(chip);
+
+    const time = document.createElement("span");
+    time.className = "log-time";
+    time.textContent = new Date(turn.t).toLocaleTimeString([], {
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+    top.appendChild(time);
+
+    // Confirmed meanings can be spoken again at any time.
+    if (turn.provenance === PROVENANCE.confirmed) {
+      const again = document.createElement("button");
+      again.className = "say-again";
+      again.type = "button";
+      again.textContent = "Say it again";
+      again.addEventListener("click", () => speak(turn.text));
+      top.appendChild(again);
+    }
+
+    item.appendChild(top);
+
+    const text = document.createElement("div");
+    text.className = "log-text";
+    text.textContent = turn.text;
+    item.appendChild(text);
+
+    // The confirmed turn also shows the raw fragment it came from --
+    // the verbatim is never hidden behind its interpretation.
+    if (turn.source_fragment) {
+      const source = document.createElement("div");
+      source.className = "log-source";
+      source.textContent = `from: “${turn.source_fragment}”`;
+      item.appendChild(source);
+    }
+
+    list.appendChild(item);
+  }
+
+  list.lastElementChild?.scrollIntoView({ block: "nearest" });
+}
+
+function chipClass(provenance) {
+  if (provenance === PROVENANCE.confirmed) return "chip-confirmed";
+  if (provenance === PROVENANCE.companion) return "chip-companion";
+  return "chip-verbatim";
 }
 
 /* --------------------------------------------------------- mode toggle */
@@ -174,10 +468,22 @@ function closeDrawer() {
   $("drawer-overlay").classList.add("hidden");
 }
 
+/* Context fetch: the editor itself arrives in build step 5; interpretation
+ * already sends whatever context the server has. */
+async function loadContext() {
+  try {
+    const resp = await fetch("/context");
+    if (resp.ok) state.context = await resp.json();
+  } catch {
+    state.context = {};
+  }
+}
+
 /* ------------------------------------------------------------- wiring */
 
 function init() {
   setupRecognition();
+  loadContext();
 
   $("mic-btn").addEventListener("click", () => {
     if (!recognition) return;
@@ -191,9 +497,19 @@ function init() {
   $("mode-patient").addEventListener("click", () => setMode("patient"));
   $("mode-companion").addEventListener("click", () => setMode("companion"));
 
+  $("type-add").addEventListener("click", offerTypedCandidate);
+  $("type-input").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") offerTypedCandidate();
+  });
+
   $("settings-btn").addEventListener("click", openDrawer);
   $("drawer-close").addEventListener("click", closeDrawer);
   $("drawer-overlay").addEventListener("click", closeDrawer);
+
+  $("voice-rate").addEventListener("input", (event) => {
+    state.voiceRate = parseFloat(event.target.value);
+    $("voice-rate-value").textContent = state.voiceRate.toFixed(2);
+  });
 }
 
 init();
