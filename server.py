@@ -18,9 +18,11 @@ not an author, and it is always allowed to say it does not know.
 from __future__ import annotations
 
 import json
+import os
 from datetime import datetime
 from pathlib import Path
 
+import anthropic
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, HTTPException
@@ -33,11 +35,103 @@ load_dotenv()
 APP_DIR = Path(__file__).parent
 SESSIONS_DIR = APP_DIR / "sessions"
 
+# Model settings, fixed by SEED.md section 4. Temperature is low so the
+# interpreter stays anchored to the words it was given, but not zero, so it
+# can still offer genuinely different readings of an ambiguous fragment.
+MODEL = "claude-sonnet-4-6"
+TEMPERATURE = 0.3
+MAX_TOKENS = 1000
+
 app = FastAPI(title="GetThrough")
 
 
 # ---------------------------------------------------------------------------
-# /interpret -- the heart of the product
+# The system prompt -- the heart of the product
+# ---------------------------------------------------------------------------
+# Everything the seed calls an invariant shows up here as an instruction the
+# model can actually follow: interpret only from evidence, stay brief and
+# first-person, offer genuinely different readings, and treat "I cannot
+# tell" as a correct, valued answer rather than a failure.
+
+SYSTEM_PROMPT = """\
+You are the interpretation engine inside GetThrough, a live communication aid.
+A person with aphasia or dementia is present, in the room, speaking for
+themself right now. Their speech reaches you as a verbatim transcript that may
+be fragmented, agrammatic, repetitive, or partly garbled.
+
+Your one job: propose what this person may be TRYING to say, right now, as up
+to 3 candidate readings. The candidates appear on screen as choices, and the
+person (with their companion's help) taps the one that matches -- or rejects
+them all. You are an interpreter, not an author. Nothing you write counts as
+their meaning until they confirm it, so your proposals must stay inside the
+evidence.
+
+WHAT YOU RECEIVE
+- VERBATIM FRAGMENT: exactly what they just said, untouched.
+- RECENT CONVERSATION: up to the last 6 turns, for situational context.
+- CONTEXT FILE: short notes the patient and family keep -- people, common
+  needs, places, favorite phrases, and family notes that decode private
+  vocabulary (for example: "She says 'the cold thing' for the refrigerator.").
+  Use it to translate this person's idiosyncratic words. It tells you what
+  words mean to them; it never tells you what they currently want.
+
+THE RULES
+1. EVIDENCE ONLY. Every candidate must be traceable to actual words in the
+   fragment, or to a clear tie between the fragment and the recent
+   conversation, decoded through the context file where it applies. Never
+   introduce names, biography, preferences, memories, or feelings that are
+   not in the evidence. An eloquent invention is not a translation; it
+   replaces this person's voice, which is the one harm this tool must never
+   cause.
+2. SPEAK AS THEY WOULD, BRIEFLY. Each candidate is first person ("I ..."),
+   present intent, under 20 words, in plain warm language -- something they
+   might be trying to say right now. Not a summary about them, not a story,
+   not a polished speech.
+3. MEANINGFULLY DIFFERENT, AND AIM FOR THREE. When the fragment offers
+   several content words or possible referents, give 3 genuinely different
+   readings -- different needs, actions, or referents -- never three
+   rewordings of one guess. Return fewer than 3 only when the evidence
+   honestly cannot support three distinct readings.
+4. UNCLEAR IS A CORRECT ANSWER. If the fragment carries no usable content --
+   only fillers, articles, repeated syllables, or sounds with no tie to the
+   conversation -- return unclear with a kind one-sentence reason. An honest
+   "I cannot tell" invites the person to try again; a confident guess built
+   on nothing speaks over them. Never stretch thin evidence into three
+   confident-sounding candidates.
+5. HONEST CONFIDENCE. "high": fragment plus context point clearly at this
+   reading. "medium": a plausible reading with real support. "low": grounded
+   but uncertain. If nothing would rise above "low", lean toward unclear.
+
+HOW TO DECIDE
+1. List the content words: words for things, actions, people, places,
+   qualities -- plus any clear echo of the recent conversation.
+2. If there are none, return unclear. Do not guess from fillers alone.
+3. Otherwise, translate the content words through the context file (private
+   vocabulary first) and form up to 3 distinct readings, strongest first.
+
+OUTPUT
+Reply with ONE JSON object and nothing else -- no prose, no markdown fences.
+Either:
+{"unclear": false, "candidates": [{"text": "...", "confidence": "high"}, ...]}
+with 1 to 3 candidates and confidence one of "high", "medium", "low" -- or:
+{"unclear": true, "candidates": [], "reason": "one plain, kind sentence"}
+
+EXAMPLES
+Fragment: "mm... it... it... the... the..." with no helpful context
+-> {"unclear": true, "candidates": [], "reason": "I only heard small \
+connecting words, so I can't offer a meaning yet."}
+
+Fragment: "want the... the cold thing... door thing... juice no..." with the
+family note "She says 'the cold thing' for the refrigerator."
+-> {"unclear": false, "candidates": [{"text": "I want something cold from \
+the fridge, but not juice.", "confidence": "high"}, {"text": "I want you to \
+open the fridge door.", "confidence": "medium"}, {"text": "I want a cold \
+drink, not juice.", "confidence": "medium"}]}
+"""
+
+
+# ---------------------------------------------------------------------------
+# /interpret -- request shapes
 # ---------------------------------------------------------------------------
 
 class RecentTurn(BaseModel):
@@ -53,22 +147,145 @@ class InterpretRequest(BaseModel):
     context: dict = {}                     # the parsed context.json
 
 
-def call_model(fragment: str, recent_turns: list[RecentTurn], context: dict) -> dict:
-    """Ask the model for candidate interpretations.
+# The Anthropic client is created on first use so the server can still boot
+# (and the UI can be explored) before an API key exists.
+_client: anthropic.Anthropic | None = None
 
-    STUB (build step 1): returns a canned response so the whole
-    browser -> server -> cards -> confirm loop can be exercised before any
-    API key exists. Replaced with the real Anthropic call in build step 3.
+
+def get_client() -> anthropic.Anthropic:
+    """Return a shared Anthropic client, created on first use.
+
+    Reads ANTHROPIC_API_KEY from the environment (loaded from .env above).
+    Raising here is fine: call_model() catches it and answers "unclear"
+    honestly instead of crashing or bluffing.
     """
-    print(f"[interpret] (stub) fragment: {fragment!r}")
-    return {
-        "unclear": False,
-        "candidates": [
-            {"text": "I want something cold from the fridge, but not juice.", "confidence": "high"},
-            {"text": "I want you to open the fridge door.", "confidence": "medium"},
-            {"text": "I want a cold drink of water.", "confidence": "medium"},
-        ],
-    }
+    global _client
+    if _client is None:
+        _client = anthropic.Anthropic()
+    return _client
+
+
+def build_user_message(fragment: str, recent_turns: list[RecentTurn], context: dict) -> str:
+    """Lay out the three evidence sources as plainly labeled text.
+
+    Plain labels beat clever nesting: anyone auditing a request can read
+    exactly what the model was given, and the model can't confuse the
+    fragment with the context that merely surrounds it.
+    """
+    parts = [f'VERBATIM FRAGMENT (what the person just said):\n"{fragment}"']
+
+    if recent_turns:
+        turns = "\n".join(f'{turn.speaker}: "{turn.text}"' for turn in recent_turns)
+        parts.append(f"RECENT CONVERSATION (oldest first):\n{turns}")
+    else:
+        parts.append("RECENT CONVERSATION: (none yet)")
+
+    # Send only the context fields the family actually filled in.
+    filled = {key: value for key, value in context.items() if value}
+    if filled:
+        parts.append(
+            "CONTEXT FILE (kept by the patient and family):\n"
+            + json.dumps(filled, indent=2, ensure_ascii=False)
+        )
+    else:
+        parts.append("CONTEXT FILE: (empty)")
+
+    return "\n\n".join(parts)
+
+
+def unclear_response(reason: str) -> dict:
+    """The honest fallback shape: no candidates, a plain-language reason."""
+    return {"unclear": True, "candidates": [], "reason": reason}
+
+
+def parse_model_json(raw: str) -> dict | None:
+    """Pull one JSON object out of the model's reply, or give up cleanly.
+
+    The prompt demands bare JSON, but a defensive parse costs nothing:
+    take everything between the first '{' and the last '}' (which also
+    strips any stray markdown fences) and try to load it.
+    """
+    start = raw.find("{")
+    end = raw.rfind("}")
+    if start == -1 or end <= start:
+        return None
+    try:
+        parsed = json.loads(raw[start:end + 1])
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, dict) else None
+
+
+VALID_CONFIDENCE = {"high", "medium", "low"}
+
+
+def sanitize_result(result: dict | None) -> dict:
+    """Force whatever came back into the exact /interpret contract.
+
+    Anything malformed collapses to "unclear" -- the one failure mode this
+    tool is allowed, because it hands the moment back to the person instead
+    of inventing words for them.
+    """
+    if not isinstance(result, dict):
+        return unclear_response("I had trouble reading the interpretation. Please try again.")
+
+    if result.get("unclear") is True:
+        reason = str(result.get("reason") or "There wasn't enough there for me to work with.")
+        return {"unclear": True, "candidates": [], "reason": reason}
+
+    candidates: list[dict] = []
+    for item in result.get("candidates") or []:
+        if not isinstance(item, dict):
+            continue
+        text = str(item.get("text") or "").strip()
+        if not text:
+            continue
+        confidence = str(item.get("confidence") or "").strip().lower()
+        if confidence not in VALID_CONFIDENCE:
+            confidence = "low"  # unknown confidence is reported, never upgraded
+        candidates.append({"text": text, "confidence": confidence})
+        if len(candidates) == 3:
+            break
+
+    if not candidates:
+        return unclear_response("I couldn't form a reading of that. Want to try again?")
+
+    return {"unclear": False, "candidates": candidates}
+
+
+def call_model(fragment: str, recent_turns: list[RecentTurn], context: dict) -> dict:
+    """Ask the model for candidate interpretations of one verbatim fragment.
+
+    Every failure path -- missing key, network trouble, malformed reply --
+    returns an honest "unclear" instead of an exception or a fabricated
+    guess. The UI then invites the person to try again.
+    """
+    user_message = build_user_message(fragment, recent_turns, context)
+    print(f"[interpret] fragment: {fragment!r}")
+
+    try:
+        response = get_client().messages.create(
+            model=MODEL,
+            max_tokens=MAX_TOKENS,
+            temperature=TEMPERATURE,
+            system=SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}],
+        )
+    except anthropic.APIStatusError as err:
+        print(f"[interpret] API error {err.status_code}: {err.message}")
+        return unclear_response("I couldn't reach the interpreter just now. Please try again.")
+    except Exception as err:  # missing key, network down, etc.
+        print(f"[interpret] call failed: {err}")
+        return unclear_response("I couldn't reach the interpreter just now. Please try again.")
+
+    raw = "".join(block.text for block in response.content if block.type == "text")
+    result = sanitize_result(parse_model_json(raw))
+
+    if result["unclear"]:
+        print(f"[interpret] -> unclear: {result['reason']}")
+    else:
+        print(f"[interpret] -> {len(result['candidates'])} candidate(s)")
+    return result
 
 
 @app.post("/interpret")
@@ -90,5 +307,8 @@ app.mount("/", StaticFiles(directory=APP_DIR / "static", html=True), name="stati
 
 
 if __name__ == "__main__":
+    if not os.environ.get("ANTHROPIC_API_KEY"):
+        print("WARNING: ANTHROPIC_API_KEY is not set. Copy .env.example to .env "
+              "and add your key; until then /interpret will answer 'unclear'.")
     print("GetThrough starting -- open http://localhost:8000 in Chrome")
     uvicorn.run(app, host="127.0.0.1", port=8000)
