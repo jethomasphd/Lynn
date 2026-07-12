@@ -468,8 +468,15 @@ function closeDrawer() {
   $("drawer-overlay").classList.add("hidden");
 }
 
-/* Context fetch: the editor itself arrives in build step 5; interpretation
- * already sends whatever context the server has. */
+/* ------------------------------- patient-owned context (SEED.md s6) ----
+ * The context file is the ONLY personalization there is. It is fetched
+ * here, shown in plain editable fields, sent in full with every
+ * /interpret call, and clearable in two taps. Nothing else remembers. */
+
+const toLines = (items) => (items || []).join("\n");
+const fromLines = (text) =>
+  text.split("\n").map((line) => line.trim()).filter(Boolean);
+
 async function loadContext() {
   try {
     const resp = await fetch("/context");
@@ -477,6 +484,103 @@ async function loadContext() {
   } catch {
     state.context = {};
   }
+  fillContextForm();
+}
+
+function fillContextForm() {
+  const ctx = state.context || {};
+  $("ctx-name").value = ctx.name || "";
+  $("ctx-people").value = toLines(ctx.people);
+  $("ctx-needs").value = toLines(ctx.common_needs);
+  $("ctx-words").value = toLines(ctx.favorite_words_phrases);
+  $("ctx-places").value = toLines(ctx.places);
+  $("ctx-notes").value = ctx.notes_from_family || "";
+}
+
+function readContextForm() {
+  return {
+    name: $("ctx-name").value.trim(),
+    people: fromLines($("ctx-people").value),
+    common_needs: fromLines($("ctx-needs").value),
+    favorite_words_phrases: fromLines($("ctx-words").value),
+    places: fromLines($("ctx-places").value),
+    notes_from_family: $("ctx-notes").value.trim(),
+  };
+}
+
+async function saveContextForm() {
+  const context = readContextForm();
+  try {
+    const resp = await fetch("/context", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(context),
+    });
+    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+    state.context = context; // takes effect on the very next /interpret
+    $("ctx-status").textContent = "Saved. These notes ride along from the next interpretation on.";
+  } catch (err) {
+    console.warn("context save failed:", err);
+    $("ctx-status").textContent = "Couldn't save. Is the server running?";
+  }
+}
+
+/* Two taps to clear everything: open settings, tap "Clear all". Deleted
+ * notes are gone from all future inference immediately. */
+async function clearContext() {
+  state.context = {
+    name: "", people: [], common_needs: [],
+    favorite_words_phrases: [], places: [], notes_from_family: "",
+  };
+  fillContextForm();
+  try {
+    await fetch("/context", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(state.context),
+    });
+    $("ctx-status").textContent = "Cleared. Nothing personal remains in future interpretations.";
+  } catch {
+    $("ctx-status").textContent = "Cleared here, but the server couldn't be reached.";
+  }
+}
+
+/* ------------------------------------------------ session save / reset */
+
+async function saveSession() {
+  if (!state.log.length) {
+    $("session-status").textContent = "Nothing to save yet.";
+    return;
+  }
+  try {
+    const resp = await fetch("/session/save", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ started: state.started, turns: state.log }),
+    });
+    const data = await resp.json();
+    if (!resp.ok) throw new Error(JSON.stringify(data));
+    $("session-status").textContent = `Saved as sessions/${data.saved}`;
+  } catch (err) {
+    console.warn("session save failed:", err);
+    $("session-status").textContent = "Couldn't save. Is the server running?";
+  }
+}
+
+function newSession() {
+  if (
+    state.log.length &&
+    !window.confirm("Start a new session? Unsaved turns will be gone.")
+  ) {
+    return;
+  }
+  state.log = [];
+  state.started = new Date().toISOString();
+  renderLog();
+  clearResponseArea();
+  renderTranscript("", "");
+  $("session-status").textContent = "New session started.";
+  $("mic-status").textContent = "";
 }
 
 /* ------------------------------------------------------------- wiring */
@@ -506,10 +610,33 @@ function init() {
   $("drawer-close").addEventListener("click", closeDrawer);
   $("drawer-overlay").addEventListener("click", closeDrawer);
 
+  $("ctx-save").addEventListener("click", saveContextForm);
+  $("ctx-clear").addEventListener("click", clearContext);
+  $("session-save").addEventListener("click", saveSession);
+  $("session-new").addEventListener("click", newSession);
+
+  // Voice rate (0.7-1.2), remembered across visits on this device.
+  const savedRate = parseFloat(localStorage.getItem("getthrough-rate") || "1.0");
+  state.voiceRate = Math.min(1.2, Math.max(0.7, savedRate));
+  $("voice-rate").value = String(state.voiceRate);
+  $("voice-rate-value").textContent = state.voiceRate.toFixed(2);
   $("voice-rate").addEventListener("input", (event) => {
     state.voiceRate = parseFloat(event.target.value);
     $("voice-rate-value").textContent = state.voiceRate.toFixed(2);
+    localStorage.setItem("getthrough-rate", String(state.voiceRate));
   });
+
+  // Larger-text mode, also remembered.
+  const applyTextSize = (on) => {
+    document.documentElement.classList.toggle("large-text", on);
+    $("text-size").textContent = on ? "Larger text: on" : "Larger text: off";
+    $("text-size").setAttribute("aria-pressed", String(on));
+    localStorage.setItem("getthrough-large-text", on ? "1" : "0");
+  };
+  applyTextSize(localStorage.getItem("getthrough-large-text") === "1");
+  $("text-size").addEventListener("click", () =>
+    applyTextSize(!document.documentElement.classList.contains("large-text"))
+  );
 }
 
 init();

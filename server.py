@@ -300,6 +300,91 @@ def interpret(req: InterpretRequest) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# /context -- the patient-owned context file (SEED.md section 6)
+# ---------------------------------------------------------------------------
+# This small, flat, human-readable file is the ONLY personalization
+# mechanism. It rides along in full on every /interpret call and lives
+# nowhere else -- no fine-tuning, no hidden memory. Deleting an entry here
+# removes it from all future inference immediately.
+
+CONTEXT_PATH = APP_DIR / "context.json"
+
+EMPTY_CONTEXT = {
+    "name": "",
+    "people": [],
+    "common_needs": [],
+    "favorite_words_phrases": [],
+    "places": [],
+    "notes_from_family": "",
+}
+
+
+@app.get("/context")
+def get_context() -> dict:
+    """Return the current context file (empty template if none exists)."""
+    if not CONTEXT_PATH.exists():
+        return dict(EMPTY_CONTEXT)
+    try:
+        return json.loads(CONTEXT_PATH.read_text(encoding="utf-8"))
+    except json.JSONDecodeError:
+        print("[context] context.json is not valid JSON; serving empty template")
+        return dict(EMPTY_CONTEXT)
+
+
+@app.post("/context")
+def save_context(context: dict) -> dict:
+    """Write the edited context back to disk, keeping it flat and readable."""
+    # Keep only the known fields so the file stays the small, auditable
+    # document the family expects to be able to read and edit by hand.
+    cleaned = {key: context.get(key, EMPTY_CONTEXT[key]) for key in EMPTY_CONTEXT}
+    CONTEXT_PATH.write_text(
+        json.dumps(cleaned, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
+    )
+    print("[context] saved context.json")
+    return {"saved": True}
+
+
+# ---------------------------------------------------------------------------
+# /session/save -- the append-only conversation log (SEED.md section 8)
+# ---------------------------------------------------------------------------
+
+VALID_PROVENANCE = {"patient-verbatim", "patient-confirmed-interpretation", "companion"}
+
+
+class SessionSaveRequest(BaseModel):
+    """The whole session as the browser holds it: start time plus turns."""
+    started: str
+    turns: list[dict]
+
+
+@app.post("/session/save")
+def save_session(req: SessionSaveRequest) -> dict:
+    """Validate provenance on every turn, then write one JSON file locally.
+
+    Validation here enforces invariants 4 (every turn is tagged) and the
+    audit trail (confirmed interpretations always carry their source
+    fragment) in code, not just in front-end habit.
+    """
+    for i, turn in enumerate(req.turns):
+        provenance = turn.get("provenance")
+        if provenance not in VALID_PROVENANCE:
+            raise HTTPException(400, f"turn {i} has invalid provenance: {provenance!r}")
+        if provenance == "patient-confirmed-interpretation" and not turn.get("source_fragment"):
+            raise HTTPException(400, f"turn {i} is a confirmed interpretation without its source_fragment")
+
+    SESSIONS_DIR.mkdir(exist_ok=True)
+    filename = f"session-{datetime.now().strftime('%Y%m%d-%H%M%S')}.json"
+    path = SESSIONS_DIR / filename
+    path.write_text(
+        json.dumps({"started": req.started, "turns": req.turns},
+                   indent=2, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
+    print(f"[session] saved {len(req.turns)} turns to {path}")
+    return {"saved": filename}
+
+
+# ---------------------------------------------------------------------------
 # Static site -- mounted last so the API routes above take precedence
 # ---------------------------------------------------------------------------
 
