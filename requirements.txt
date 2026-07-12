@@ -1,6 +1,6 @@
-# GetThrough runs on exactly four packages, on purpose (see SEED.md).
-# FastAPI + uvicorn serve one small backend file; anthropic talks to the
-# model; python-dotenv reads the API key from .env. Nothing else.
+# THE LANTERN runs on exactly four packages, on purpose (see SEED.md, the
+# origin document). FastAPI + uvicorn serve one small backend file;
+# anthropic talks to the model; python-dotenv reads the key from .env.
 fastapi
 uvicorn
 anthropic

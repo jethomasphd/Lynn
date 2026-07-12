@@ -1,15 +1,19 @@
-/* GetThrough front-end.
+/* THE LANTERN -- front-end.
  *
- * The five invariants (SEED.md section 2) live here as much as in the server:
- *   1. the verbatim transcript is always visible -- it is logged the moment
- *      the mic stops, and it sits above the cards that interpret it;
- *   2. nothing is spoken or logged as the patient's meaning until they tap
- *      it -- speak() is called from exactly two places: a confirmation tap
- *      and the "Say it again" button on an already-confirmed turn;
- *   3. "None of these" is always the last card, same size as the others;
- *   4. every log entry carries one of exactly three provenance chips;
- *   5. when the model can't tell, we show that honestly and invite another
- *      try -- no forced guesses.
+ * The chamber's five laws (born as the GetThrough invariants, SEED.md s2)
+ * live here as much as in the server:
+ *   1. the verbatim words are always visible -- recorded the moment the
+ *      lantern stops listening, shown above the readings that interpret
+ *      them, never cleaned up, never replaced;
+ *   2. nothing is spoken or recorded as the person's meaning until THEY
+ *      choose it -- speak() fires only inside the same gesture as the
+ *      person's own tap: confirming a reading, choosing a quick word, or
+ *      replaying words already confirmed;
+ *   3. "None of these" is always offered, same size as the readings;
+ *   4. every entry in the record carries one of exactly four provenance
+ *      chips -- verbatim, confirmed-reading, chosen, keeper;
+ *   5. when the reader can't tell, the lantern says so and waits -- no
+ *      forced guesses, ever.
  */
 
 "use strict";
@@ -17,25 +21,26 @@
 const $ = (id) => document.getElementById(id);
 
 const PROVENANCE = {
-  verbatim: "patient-verbatim",
-  confirmed: "patient-confirmed-interpretation",
-  companion: "companion",
+  verbatim: "verbatim",             // the person's exact words, untouched
+  confirmed: "confirmed-reading",   // a reading the person confirmed by tap
+  chosen: "chosen",                 // words the person picked by hand
+  keeper: "keeper",                 // the companion, speaking for themself
 };
 
 /* ------------------------------------------------------------------ state */
 
 const state = {
-  mode: "patient",       // "patient" | "companion" -- who the mic belongs to
-  listening: false,      // is the mic currently capturing?
+  mode: "voice",         // "voice" (the person) | "keeper" (the companion)
+  listening: false,      // is the lantern currently lit and listening?
   heardFinal: "",        // finalized transcript pieces accumulated this press
-  log: [],               // the session log: turns with provenance (SEED.md s8)
-  started: new Date().toISOString(),  // when this session began
-  pending: null,         // { fragment, candidates } awaiting confirm/reject
-  context: {},           // parsed context.json, fetched from the server
+  record: [],            // the session record: turns with provenance
+  started: new Date().toISOString(),  // when this record began
+  pending: null,         // { fragment, candidates } awaiting the person's tap
+  prism: {},             // parsed prism.json, fetched from the server
   voiceRate: 1.0,        // TTS rate, set by the settings slider (0.7-1.2)
 };
 
-/* ----------------------------------------------- speech capture (the mic) */
+/* ------------------------------------------------ speech capture (the ear) */
 
 // Web Speech API -- free, live, keyless; ships in Chrome.
 const SpeechRecognitionImpl =
@@ -45,19 +50,18 @@ let recognition = null;
 
 function setupRecognition() {
   if (!SpeechRecognitionImpl) {
-    $("mic-status").textContent =
+    $("lantern-status").textContent =
       "This browser has no speech recognition. Please use Chrome.";
-    $("mic-btn").disabled = true;
+    $("lantern-btn").disabled = true;
     return;
   }
 
   recognition = new SpeechRecognitionImpl();
   recognition.continuous = true;      // keep listening until tapped again
   recognition.interimResults = true;  // stream words as they are recognized
-  recognition.lang = "en-US";
 
-  // Render every partial result immediately: the person sees their own
-  // words appear as they speak, verbatim, before anything interprets them.
+  // Show every partial result immediately: the person sees their own words
+  // appear as they speak, verbatim, before anything reads into them.
   recognition.onresult = (event) => {
     let interim = "";
     for (let i = event.resultIndex; i < event.results.length; i++) {
@@ -74,58 +78,59 @@ function setupRecognition() {
   recognition.onerror = (event) => {
     if (event.error === "no-speech") return; // harmless; onend handles it
     console.warn("speech recognition error:", event.error);
-    $("mic-status").textContent =
+    $("lantern-status").textContent =
       event.error === "not-allowed"
         ? "Microphone access was blocked. Allow the mic and try again."
-        : "The microphone hit a snag. Tap and try again.";
-    stopListeningUI();
+        : "The lantern flickered. Tap and try again.";
+    dimLanternUI();
   };
 
   // Fires both when we call .stop() and when Chrome times out on silence.
   // Either way: finalize whatever was heard.
   recognition.onend = () => {
     if (!state.listening) return;
-    stopListeningUI();
+    dimLanternUI();
     finalizeUtterance();
   };
 }
 
-function startListening() {
-  // Starting over withdraws any cards still on screen -- the person chose
-  // to try again, which is always allowed and never logged against them.
+function lightLantern() {
+  // Lighting the lantern again withdraws any readings still on screen --
+  // the person chose to try again, which is always allowed and never
+  // recorded against them.
   clearResponseArea();
   state.heardFinal = "";
   renderTranscript("", "");
   state.listening = true;
-  $("mic-btn").classList.add("listening");
-  $("mic-btn").setAttribute("aria-label", "Stop listening");
-  $("mic-label").textContent = "Listening… tap to stop";
-  $("mic-status").textContent =
-    state.mode === "patient"
-      ? "Listening to the patient."
-      : "Listening to the companion.";
+  $("lantern-btn").classList.add("lit");
+  $("lantern-btn").setAttribute("aria-label", "Stop listening");
+  $("lantern-label").textContent = "Listening… tap to stop";
+  $("lantern-status").textContent =
+    state.mode === "voice"
+      ? "The lantern is listening to them."
+      : "The lantern is listening to the keeper.";
   recognition.start();
 }
 
-function stopListeningUI() {
+function dimLanternUI() {
   state.listening = false;
-  $("mic-btn").classList.remove("listening");
-  $("mic-btn").setAttribute("aria-label", "Start listening");
-  $("mic-label").textContent = "Tap to talk";
+  $("lantern-btn").classList.remove("lit");
+  $("lantern-btn").setAttribute("aria-label", "Light the lantern and listen");
+  $("lantern-label").textContent = "Tap to talk";
 }
 
-/* Called once per press, after the mic stops, with the verbatim result. */
+/* Called once per press, after the lantern dims, with the verbatim result. */
 function finalizeUtterance() {
   const text = state.heardFinal.trim();
   if (!text) {
-    $("mic-status").textContent = "I didn’t catch anything. Tap and try again.";
+    $("lantern-status").textContent = "The lantern didn’t catch anything. Tap and try again.";
     return;
   }
-  $("mic-status").textContent = "";
-  if (state.mode === "patient") {
-    handlePatientFragment(text);
+  $("lantern-status").textContent = "";
+  if (state.mode === "voice") {
+    handleVoiceFragment(text);
   } else {
-    handleCompanionTurn(text);
+    handleKeeperTurn(text);
   }
 }
 
@@ -137,7 +142,7 @@ function renderTranscript(finalText, interimText) {
     hint.className = "transcript-hint";
     hint.textContent = state.listening
       ? "Listening…"
-      : "Tap the microphone, speak, then tap again.";
+      : "Tap the lantern, speak, then tap again.";
     box.appendChild(hint);
     return;
   }
@@ -150,12 +155,12 @@ function renderTranscript(finalText, interimText) {
   }
 }
 
-/* ------------------------------------------------- the interpretation flow */
+/* ------------------------------------------------------------ the readings */
 
-async function handlePatientFragment(fragment) {
-  // Invariant 1: the raw fragment enters the log first, before any
-  // interpretation exists, and is never cleaned up or replaced.
-  addTurn({ speaker: "patient", provenance: PROVENANCE.verbatim, text: fragment });
+async function handleVoiceFragment(fragment) {
+  // First law: the raw fragment enters the record before any reading
+  // exists, and is never cleaned up or replaced.
+  addTurn({ speaker: "voice", provenance: PROVENANCE.verbatim, text: fragment });
 
   state.pending = { fragment, candidates: [] };
   $("response-area").classList.remove("hidden");
@@ -166,28 +171,28 @@ async function handlePatientFragment(fragment) {
 
   let result;
   try {
-    const resp = await fetch("/interpret", {
+    const resp = await fetch("/reading", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         fragment,
         recent_turns: recentTurns(),
-        context: state.context,
+        context: state.prism,
       }),
     });
     result = await resp.json();
   } catch (err) {
-    console.warn("interpret failed:", err);
+    console.warn("reading failed:", err);
     result = {
       unclear: true,
       candidates: [],
-      reason: "I couldn't reach the interpreter just now. Please try again.",
+      reason: "The lantern couldn't reach its reader just now. Please try again.",
     };
   }
 
   $("thinking").classList.add("hidden");
 
-  // Ignore stale replies if the person already started a new recording.
+  // Ignore stale replies if the person already lit the lantern again.
   if (!state.pending || state.pending.fragment !== fragment) return;
 
   if (result.unclear) {
@@ -198,21 +203,21 @@ async function handlePatientFragment(fragment) {
   }
 }
 
-function handleCompanionTurn(text) {
-  // Companion speech skips interpretation entirely -- it is context, spoken
-  // by someone who can already speak for themself.
-  addTurn({ speaker: "companion", provenance: PROVENANCE.companion, text });
-  $("mic-status").textContent = "Added to the log.";
+function handleKeeperTurn(text) {
+  // Keeper speech gets no readings -- it is context, spoken by someone who
+  // can already speak for themself.
+  addTurn({ speaker: "keeper", provenance: PROVENANCE.keeper, text });
+  $("lantern-status").textContent = "Added to the record.";
 }
 
-/* The last 6 turns, as context for the next interpretation. A verbatim
- * fragment is skipped when the very next turn is its confirmed meaning,
- * so the model sees each utterance once, in its clearest form. */
+/* The last 6 turns, as context for the next reading. A verbatim fragment
+ * is skipped when the very next turn is its confirmed reading, so the
+ * reader sees each utterance once, in its clearest form. */
 function recentTurns() {
   const turns = [];
-  for (let i = 0; i < state.log.length; i++) {
-    const turn = state.log[i];
-    const next = state.log[i + 1];
+  for (let i = 0; i < state.record.length; i++) {
+    const turn = state.record[i];
+    const next = state.record[i + 1];
     if (
       turn.provenance === PROVENANCE.verbatim &&
       next &&
@@ -226,7 +231,7 @@ function recentTurns() {
   return turns.slice(-6);
 }
 
-/* --------------------------------------------------------- candidate cards */
+/* ------------------------------------------------------------ the cards */
 
 function renderCards(candidates) {
   const box = $("cards");
@@ -241,7 +246,7 @@ function renderCards(candidates) {
       })
     );
   });
-  // Invariant 3: rejecting is always offered, same size and prominence.
+  // Third law: refusing is always offered, same size and prominence.
   box.appendChild(
     buildCard({
       number: "✕",
@@ -258,7 +263,7 @@ function buildCard({ number, text, confidence, none, onTap }) {
   card.type = "button";
   card.setAttribute(
     "aria-label",
-    none ? "None of these, let me try again" : `Choice ${number}: ${text}`
+    none ? "None of these, let me try again" : `Reading ${number}: ${text}`
   );
 
   const badge = document.createElement("span");
@@ -283,8 +288,8 @@ function buildCard({ number, text, confidence, none, onTap }) {
   return card;
 }
 
-/* Confirmation: the single moment interpretation becomes the patient's
- * meaning -- because the patient made it so with a deliberate tap. */
+/* Confirmation: the single moment a reading becomes the person's meaning --
+ * because the person made it so with a deliberate tap. */
 function confirmMeaning(chosenText) {
   const pending = state.pending;
   if (!pending) return;
@@ -293,11 +298,11 @@ function confirmMeaning(chosenText) {
     .map((c) => c.text)
     .filter((t) => t !== chosenText);
 
-  // Invariant 2: TTS happens here, after the tap, and nowhere earlier.
+  // Second law: the voice is given here, inside the person's own tap.
   speak(chosenText);
 
   addTurn({
-    speaker: "patient",
+    speaker: "voice",
     provenance: PROVENANCE.confirmed,
     text: chosenText,
     source_fragment: pending.fragment,   // the audit trail: what was said,
@@ -305,12 +310,12 @@ function confirmMeaning(chosenText) {
   });
 
   clearResponseArea();
-  $("mic-status").textContent = "Spoken aloud and added to the log.";
+  $("lantern-status").textContent = "Spoken aloud and kept in the record.";
 }
 
 function rejectAll() {
-  // No interpretation is logged. The verbatim fragment already stands in
-  // the log on its own -- rejecting costs the person nothing.
+  // No reading is recorded. The verbatim fragment already stands in the
+  // record on its own -- refusing costs the person nothing.
   const pending = state.pending;
   showUnclear("");
   $("unclear-panel").querySelector(".unclear-title").textContent =
@@ -321,7 +326,8 @@ function rejectAll() {
 function showUnclear(reason) {
   $("cards").innerHTML = "";
   const panel = $("unclear-panel");
-  panel.querySelector(".unclear-title").textContent = "I couldn’t tell what you meant.";
+  panel.querySelector(".unclear-title").textContent =
+    "The lantern can’t make this out yet.";
   $("unclear-reason").textContent = reason || "";
   panel.classList.remove("hidden");
 }
@@ -335,8 +341,8 @@ function clearResponseArea() {
   $("type-input").value = "";
 }
 
-/* Typing path: the typed text becomes one more card. It still takes the
- * confirming tap -- typing never skips confirmation (invariant 2). */
+/* Words offered by hand become one more reading card. The person still
+ * taps to confirm -- offering never skips their choice (second law). */
 function offerTypedCandidate() {
   const text = $("type-input").value.trim();
   if (!text || !state.pending) return;
@@ -360,11 +366,38 @@ function offerTypedCandidate() {
   );
 }
 
+/* ---------------------------------------------------------- quick words */
+
+/* The person's own common needs, from the prism, as one-tap choices.
+ * A tap here IS the person choosing: it speaks in the same gesture and is
+ * recorded as their chosen words -- no reading step in between. */
+function renderQuickWords() {
+  const box = $("quick-words");
+  box.innerHTML = "";
+  for (const phrase of state.prism.common_needs || []) {
+    const btn = document.createElement("button");
+    btn.className = "quick-word";
+    btn.type = "button";
+    btn.textContent = phrase;
+    btn.setAttribute("aria-label", `Say: ${phrase}`);
+    btn.addEventListener("click", () => chooseQuickWord(phrase));
+    box.appendChild(btn);
+  }
+}
+
+function chooseQuickWord(phrase) {
+  // Second law: spoken inside the person's own tap.
+  speak(phrase);
+  addTurn({ speaker: "voice", provenance: PROVENANCE.chosen, text: phrase });
+  $("lantern-status").textContent = "Spoken aloud and kept in the record.";
+}
+
 /* ------------------------------------------------------- text-to-speech */
 
-/* speak() is invoked from confirmMeaning() and the "Say it again" button
- * only. If you are adding a third call site, stop: it almost certainly
- * violates invariant 2. */
+/* speak() fires from exactly three gestures, each one the person's own
+ * tap: confirming a reading, choosing a quick word, or replaying words
+ * already confirmed. If you are adding a fourth call site, stop: it
+ * almost certainly breaks the second law. */
 function speak(text) {
   window.speechSynthesis.cancel(); // never overlap two utterances
   const utterance = new SpeechSynthesisUtterance(text);
@@ -372,24 +405,31 @@ function speak(text) {
   window.speechSynthesis.speak(utterance);
 }
 
-/* -------------------------------------------------- the conversation log */
+/* ------------------------------------------------------------ the record */
 
 function addTurn(turn) {
-  state.log.push({ t: new Date().toISOString(), ...turn });
-  renderLog();
+  state.record.push({ t: new Date().toISOString(), ...turn });
+  renderRecord();
 }
 
-function renderLog() {
-  const list = $("log");
-  list.innerHTML = "";
-  $("log-empty").classList.toggle("hidden", state.log.length > 0);
+function chipClass(provenance) {
+  if (provenance === PROVENANCE.confirmed) return "chip-confirmed";
+  if (provenance === PROVENANCE.chosen) return "chip-chosen";
+  if (provenance === PROVENANCE.keeper) return "chip-keeper";
+  return "chip-verbatim";
+}
 
-  for (const turn of state.log) {
+function renderRecord() {
+  const list = $("record");
+  list.innerHTML = "";
+  $("record-empty").classList.toggle("hidden", state.record.length > 0);
+
+  for (const turn of state.record) {
     const item = document.createElement("li");
-    item.className = "log-entry";
+    item.className = "record-entry";
 
     const top = document.createElement("div");
-    top.className = "log-entry-top";
+    top.className = "record-entry-top";
 
     const chip = document.createElement("span");
     chip.className = "chip " + chipClass(turn.provenance);
@@ -397,35 +437,51 @@ function renderLog() {
     top.appendChild(chip);
 
     const time = document.createElement("span");
-    time.className = "log-time";
+    time.className = "record-time";
     time.textContent = new Date(turn.t).toLocaleTimeString([], {
       hour: "2-digit",
       minute: "2-digit",
     });
     top.appendChild(time);
 
-    // Confirmed meanings can be spoken again at any time.
-    if (turn.provenance === PROVENANCE.confirmed) {
+    // Words the person made theirs can be spoken again, or shown big
+    // across the room, at any time.
+    if (
+      turn.provenance === PROVENANCE.confirmed ||
+      turn.provenance === PROVENANCE.chosen
+    ) {
+      const actions = document.createElement("span");
+      actions.className = "entry-actions";
+
       const again = document.createElement("button");
       again.className = "say-again";
       again.type = "button";
       again.textContent = "Say it again";
       again.addEventListener("click", () => speak(turn.text));
-      top.appendChild(again);
+      actions.appendChild(again);
+
+      const big = document.createElement("button");
+      big.className = "show-big";
+      big.type = "button";
+      big.textContent = "Show big";
+      big.addEventListener("click", () => showBig(turn.text));
+      actions.appendChild(big);
+
+      top.appendChild(actions);
     }
 
     item.appendChild(top);
 
     const text = document.createElement("div");
-    text.className = "log-text";
+    text.className = "record-text";
     text.textContent = turn.text;
     item.appendChild(text);
 
-    // The confirmed turn also shows the raw fragment it came from --
-    // the verbatim is never hidden behind its interpretation.
+    // The confirmed reading also shows the raw fragment it came from --
+    // the verbatim is never hidden behind its reading.
     if (turn.source_fragment) {
       const source = document.createElement("div");
-      source.className = "log-source";
+      source.className = "record-source";
       source.textContent = `from: “${turn.source_fragment}”`;
       item.appendChild(source);
     }
@@ -436,27 +492,27 @@ function renderLog() {
   list.lastElementChild?.scrollIntoView({ block: "nearest" });
 }
 
-function chipClass(provenance) {
-  if (provenance === PROVENANCE.confirmed) return "chip-confirmed";
-  if (provenance === PROVENANCE.companion) return "chip-companion";
-  return "chip-verbatim";
+/* Show one confirmed meaning across the room: dark ground, huge words. */
+function showBig(text) {
+  $("show-big-text").textContent = text;
+  $("show-big").classList.remove("hidden");
 }
 
-/* --------------------------------------------------------- mode toggle */
+/* ----------------------------------------------------------- mode toggle */
 
 function setMode(mode) {
   state.mode = mode;
-  const patientOn = mode === "patient";
-  $("mode-patient").classList.toggle("active", patientOn);
-  $("mode-companion").classList.toggle("active", !patientOn);
-  $("mode-patient").setAttribute("aria-pressed", String(patientOn));
-  $("mode-companion").setAttribute("aria-pressed", String(!patientOn));
-  $("mic-status").textContent = patientOn
-    ? "Mic is set to the patient. Their words will be interpreted."
-    : "Mic is set to the companion. Their words go straight to the log.";
+  const voiceOn = mode === "voice";
+  $("mode-voice").classList.toggle("active", voiceOn);
+  $("mode-keeper").classList.toggle("active", !voiceOn);
+  $("mode-voice").setAttribute("aria-pressed", String(voiceOn));
+  $("mode-keeper").setAttribute("aria-pressed", String(!voiceOn));
+  $("lantern-status").textContent = voiceOn
+    ? "The lantern is set to their voice. Their words will get readings."
+    : "The lantern is set to the keeper. Keeper words go straight to the record.";
 }
 
-/* ----------------------------------------------------- settings drawer */
+/* ------------------------------------------------------ settings drawer */
 
 function openDrawer() {
   $("drawer").classList.remove("hidden");
@@ -468,172 +524,211 @@ function closeDrawer() {
   $("drawer-overlay").classList.add("hidden");
 }
 
-/* ------------------------------- patient-owned context (SEED.md s6) ----
- * The context file is the ONLY personalization there is. It is fetched
- * here, shown in plain editable fields, sent in full with every
- * /interpret call, and clearable in two taps. Nothing else remembers. */
+/* --------------------------------------------------------- the prism ----
+ * Fetched here, shown in plain editable fields, sent in full with every
+ * reading, clearable in two taps. Nothing else remembers. */
 
 const toLines = (items) => (items || []).join("\n");
 const fromLines = (text) =>
   text.split("\n").map((line) => line.trim()).filter(Boolean);
 
-async function loadContext() {
+async function loadPrism() {
   try {
-    const resp = await fetch("/context");
-    if (resp.ok) state.context = await resp.json();
+    const resp = await fetch("/prism");
+    if (resp.ok) state.prism = await resp.json();
   } catch {
-    state.context = {};
+    state.prism = {};
   }
-  fillContextForm();
+  fillPrismForm();
+  renderQuickWords();
 }
 
-function fillContextForm() {
-  const ctx = state.context || {};
-  $("ctx-name").value = ctx.name || "";
-  $("ctx-people").value = toLines(ctx.people);
-  $("ctx-needs").value = toLines(ctx.common_needs);
-  $("ctx-words").value = toLines(ctx.favorite_words_phrases);
-  $("ctx-places").value = toLines(ctx.places);
-  $("ctx-notes").value = ctx.notes_from_family || "";
+function fillPrismForm() {
+  const prism = state.prism || {};
+  $("prism-name").value = prism.name || "";
+  $("prism-people").value = toLines(prism.people);
+  $("prism-needs").value = toLines(prism.common_needs);
+  $("prism-words").value = toLines(prism.favorite_words_phrases);
+  $("prism-places").value = toLines(prism.places);
+  $("prism-notes").value = prism.notes_from_family || "";
 }
 
-function readContextForm() {
+function readPrismForm() {
   return {
-    name: $("ctx-name").value.trim(),
-    people: fromLines($("ctx-people").value),
-    common_needs: fromLines($("ctx-needs").value),
-    favorite_words_phrases: fromLines($("ctx-words").value),
-    places: fromLines($("ctx-places").value),
-    notes_from_family: $("ctx-notes").value.trim(),
+    name: $("prism-name").value.trim(),
+    people: fromLines($("prism-people").value),
+    common_needs: fromLines($("prism-needs").value),
+    favorite_words_phrases: fromLines($("prism-words").value),
+    places: fromLines($("prism-places").value),
+    notes_from_family: $("prism-notes").value.trim(),
   };
 }
 
-async function saveContextForm() {
-  const context = readContextForm();
+async function savePrismForm() {
+  const prism = readPrismForm();
   try {
-    const resp = await fetch("/context", {
+    const resp = await fetch("/prism", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(context),
+      body: JSON.stringify(prism),
     });
     if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    state.context = context; // takes effect on the very next /interpret
-    $("ctx-status").textContent = "Saved. These notes ride along from the next interpretation on.";
+    state.prism = prism; // takes effect on the very next reading
+    renderQuickWords();
+    $("prism-status").textContent = "Saved. The prism refracts from the next reading on.";
   } catch (err) {
-    console.warn("context save failed:", err);
-    $("ctx-status").textContent = "Couldn't save. Is the server running?";
+    console.warn("prism save failed:", err);
+    $("prism-status").textContent = "Couldn't save. Is the server running?";
   }
 }
 
 /* Two taps to clear everything: open settings, tap "Clear all". Deleted
- * notes are gone from all future inference immediately. */
-async function clearContext() {
-  state.context = {
+ * notes are gone from all future readings immediately. */
+async function clearPrism() {
+  state.prism = {
     name: "", people: [], common_needs: [],
     favorite_words_phrases: [], places: [], notes_from_family: "",
   };
-  fillContextForm();
+  fillPrismForm();
+  renderQuickWords();
   try {
-    await fetch("/context", {
+    await fetch("/prism", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(state.context),
+      body: JSON.stringify(state.prism),
     });
-    $("ctx-status").textContent = "Cleared. Nothing personal remains in future interpretations.";
+    $("prism-status").textContent = "Cleared. Nothing personal remains in future readings.";
   } catch {
-    $("ctx-status").textContent = "Cleared here, but the server couldn't be reached.";
+    $("prism-status").textContent = "Cleared here, but the server couldn't be reached.";
   }
 }
 
-/* ------------------------------------------------ session save / reset */
+/* ------------------------------------------------- the record: keep / new */
 
-async function saveSession() {
-  if (!state.log.length) {
-    $("session-status").textContent = "Nothing to save yet.";
+async function saveRecord() {
+  if (!state.record.length) {
+    $("record-status").textContent = "Nothing to keep yet.";
     return;
   }
   try {
-    const resp = await fetch("/session/save", {
+    const resp = await fetch("/record/save", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ started: state.started, turns: state.log }),
+      body: JSON.stringify({ started: state.started, turns: state.record }),
     });
     const data = await resp.json();
     if (!resp.ok) throw new Error(JSON.stringify(data));
-    $("session-status").textContent = `Saved as sessions/${data.saved}`;
+    $("record-status").textContent = `Kept as records/${data.saved}`;
   } catch (err) {
-    console.warn("session save failed:", err);
-    $("session-status").textContent = "Couldn't save. Is the server running?";
+    console.warn("record save failed:", err);
+    $("record-status").textContent = "Couldn't save. Is the server running?";
   }
 }
 
-function newSession() {
+function newRecord() {
   if (
-    state.log.length &&
-    !window.confirm("Start a new session? Unsaved turns will be gone.")
+    state.record.length &&
+    !window.confirm("Start a new record? Unkept turns will be gone.")
   ) {
     return;
   }
-  state.log = [];
+  state.record = [];
   state.started = new Date().toISOString();
-  renderLog();
+  renderRecord();
   clearResponseArea();
   renderTranscript("", "");
-  $("session-status").textContent = "New session started.";
-  $("mic-status").textContent = "";
+  $("record-status").textContent = "New record started.";
+  $("lantern-status").textContent = "";
+}
+
+/* ---------------------------------------------------------- the threshold */
+
+function showThreshold() {
+  $("threshold").classList.remove("hidden");
+}
+
+function crossThreshold() {
+  $("threshold").classList.add("hidden");
+  localStorage.setItem("lantern-crossed", "1");
 }
 
 /* ------------------------------------------------------------- wiring */
 
 function init() {
   setupRecognition();
-  loadContext();
+  loadPrism();
 
-  $("mic-btn").addEventListener("click", () => {
+  // The threshold greets the first arrival, then stands open.
+  if (localStorage.getItem("lantern-crossed") !== "1") {
+    showThreshold();
+  }
+  $("threshold-begin").addEventListener("click", crossThreshold);
+  $("threshold-again").addEventListener("click", () => {
+    closeDrawer();
+    showThreshold();
+  });
+
+  $("lantern-btn").addEventListener("click", () => {
     if (!recognition) return;
     if (state.listening) {
       recognition.stop(); // onend fires and finalizes
     } else {
-      startListening();
+      lightLantern();
     }
   });
 
-  $("mode-patient").addEventListener("click", () => setMode("patient"));
-  $("mode-companion").addEventListener("click", () => setMode("companion"));
+  $("mode-voice").addEventListener("click", () => setMode("voice"));
+  $("mode-keeper").addEventListener("click", () => setMode("keeper"));
 
   $("type-add").addEventListener("click", offerTypedCandidate);
   $("type-input").addEventListener("keydown", (event) => {
     if (event.key === "Enter") offerTypedCandidate();
   });
 
+  $("show-big").addEventListener("click", () => {
+    $("show-big").classList.add("hidden");
+  });
+
   $("settings-btn").addEventListener("click", openDrawer);
   $("drawer-close").addEventListener("click", closeDrawer);
   $("drawer-overlay").addEventListener("click", closeDrawer);
 
-  $("ctx-save").addEventListener("click", saveContextForm);
-  $("ctx-clear").addEventListener("click", clearContext);
-  $("session-save").addEventListener("click", saveSession);
-  $("session-new").addEventListener("click", newSession);
+  $("prism-save").addEventListener("click", savePrismForm);
+  $("prism-clear").addEventListener("click", clearPrism);
+  $("record-save").addEventListener("click", saveRecord);
+  $("record-new").addEventListener("click", newRecord);
 
   // Voice rate (0.7-1.2), remembered across visits on this device.
-  const savedRate = parseFloat(localStorage.getItem("getthrough-rate") || "1.0");
+  const savedRate = parseFloat(localStorage.getItem("lantern-rate") || "1.0");
   state.voiceRate = Math.min(1.2, Math.max(0.7, savedRate));
   $("voice-rate").value = String(state.voiceRate);
   $("voice-rate-value").textContent = state.voiceRate.toFixed(2);
   $("voice-rate").addEventListener("input", (event) => {
     state.voiceRate = parseFloat(event.target.value);
     $("voice-rate-value").textContent = state.voiceRate.toFixed(2);
-    localStorage.setItem("getthrough-rate", String(state.voiceRate));
+    localStorage.setItem("lantern-rate", String(state.voiceRate));
   });
+
+  // Daylight / lamplight, remembered.
+  const applyLight = (daylight) => {
+    document.documentElement.classList.toggle("daylight", daylight);
+    $("light-toggle").textContent = daylight ? "Daylight: on" : "Daylight: off";
+    $("light-toggle").setAttribute("aria-pressed", String(daylight));
+    localStorage.setItem("lantern-daylight", daylight ? "1" : "0");
+  };
+  applyLight(localStorage.getItem("lantern-daylight") === "1");
+  $("light-toggle").addEventListener("click", () =>
+    applyLight(!document.documentElement.classList.contains("daylight"))
+  );
 
   // Larger-text mode, also remembered.
   const applyTextSize = (on) => {
     document.documentElement.classList.toggle("large-text", on);
     $("text-size").textContent = on ? "Larger text: on" : "Larger text: off";
     $("text-size").setAttribute("aria-pressed", String(on));
-    localStorage.setItem("getthrough-large-text", on ? "1" : "0");
+    localStorage.setItem("lantern-large-text", on ? "1" : "0");
   };
-  applyTextSize(localStorage.getItem("getthrough-large-text") === "1");
+  applyTextSize(localStorage.getItem("lantern-large-text") === "1");
   $("text-size").addEventListener("click", () =>
     applyTextSize(!document.documentElement.classList.contains("large-text"))
   );
