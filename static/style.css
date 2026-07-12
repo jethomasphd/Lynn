@@ -1,2 +1,462 @@
-/* GetThrough styles -- design system arrives with the interface builds. */
-body { font-family: Georgia, serif; margin: 2rem; }
+/* ==========================================================================
+   GetThrough design system (SEED.md section 7)
+
+   The primary user may have impaired language, vision, and motor control.
+   Every choice below follows from that:
+     - big targets (mic >= 96px, cards >= 80px tall, buttons >= 48px)
+     - big text (live transcript >= 24px, card text >= 20px)
+     - calm, warm, high-contrast palette -- paper and ink, not clinic-white
+     - color is never the only signal (chips carry words, states carry text)
+   ========================================================================== */
+
+:root {
+  /* Warm paper-and-ink palette. All text/background pairs meet WCAG AA. */
+  --paper: #f6f0e5;        /* page background: warm cream               */
+  --card: #fffdf8;         /* raised surfaces                           */
+  --ink: #33291e;          /* main text: warm near-black (~12:1)        */
+  --ink-soft: #6a5b49;     /* secondary text (~5.6:1 on paper)          */
+  --line: #ddd0ba;         /* hairline borders                          */
+  --terracotta: #a8431c;   /* the mic + primary actions (~6:1 w/ white) */
+  --terracotta-deep: #7c2f10;
+  --green: #2e6b47;        /* confirmed-interpretation chip             */
+  --slate: #4c5566;        /* patient-verbatim chip                     */
+  --blue: #2f5f8f;         /* companion chip                            */
+  --danger: #9b2c2c;
+  --focus: #1d4f91;        /* visible keyboard focus ring               */
+  --radius: 14px;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 19px; }
+html.large-text { font-size: 23px; }   /* the "Larger text" toggle */
+
+body {
+  margin: 0;
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Seravek", "Gill Sans", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  line-height: 1.45;
+}
+
+button { font: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.hidden { display: none !important; }
+
+.app {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.1rem 1.1rem 4rem;
+}
+
+/* ================= Header ================= */
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 2px solid var(--line);
+}
+
+h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.9rem;
+  letter-spacing: 0.01em;
+}
+
+.tagline {
+  margin: 0.1rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.top-controls { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+
+/* Mode toggle: one explicit switch, Patient / Companion */
+.mode-toggle {
+  display: flex;
+  border: 2px solid var(--terracotta);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--card);
+}
+
+.mode-btn {
+  border: 0;
+  background: transparent;
+  color: var(--terracotta-deep);
+  padding: 0.55rem 1.1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  min-height: 48px;
+}
+
+.mode-btn.active { background: var(--terracotta); color: #fff; }
+
+.settings-btn {
+  border: 2px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.55rem 1rem;
+  min-height: 48px;
+  font-weight: 600;
+}
+
+/* ================= Talk area ================= */
+
+.talk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.4rem 0 0.6rem;
+}
+
+/* Live transcript: what the mic is hearing, verbatim, as it happens. */
+.transcript {
+  width: 100%;
+  min-height: 4.2rem;
+  background: var(--card);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  font-size: 1.5rem;            /* >= 24px requirement */
+  line-height: 1.4;
+  margin-bottom: 1.3rem;
+}
+
+.transcript-hint { color: var(--ink-soft); font-size: 1.15rem; }
+.transcript .interim { color: var(--ink-soft); }
+
+/* The one giant mic button. 136px, far above the 96px minimum. */
+.mic {
+  width: 136px;
+  height: 136px;
+  border-radius: 50%;
+  border: 0;
+  background: var(--terracotta);
+  color: #fff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  box-shadow: 0 5px 16px rgba(124, 47, 16, 0.35);
+  transition: transform 120ms ease, background 200ms ease;
+}
+
+.mic:active { transform: scale(0.96); }
+.mic-icon { width: 52px; height: 52px; }
+.mic-label { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em; }
+
+/* Listening state: color change AND text change AND a slow calm pulse. */
+.mic.listening {
+  background: var(--terracotta-deep);
+  animation: pulse 1.8s ease-in-out infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(124, 47, 16, 0.45); }
+  50%      { box-shadow: 0 0 0 18px rgba(124, 47, 16, 0); }
+}
+
+.mic-status {
+  min-height: 1.5rem;
+  margin: 0.8rem 0 0;
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+  text-align: center;
+}
+
+/* ================= Response area (cards / unclear) ================= */
+
+.response-area {
+  margin-top: 0.8rem;
+  padding: 1.1rem;
+  background: rgba(255, 253, 248, 0.65);
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+}
+
+/* Invariant 1: the raw fragment sits right here, above its interpretations. */
+.fragment-echo {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.fragment-echo-text { font-size: 1.25rem; font-style: italic; }
+
+.thinking { color: var(--ink-soft); font-size: 1.15rem; padding: 0.6rem 0.2rem; }
+
+.cards { display: flex; flex-direction: column; gap: 0.85rem; }
+
+/* Candidate cards and "None of these" share the exact same box:
+   same min-height, same border, same text size (invariant 3). */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  min-height: 92px;              /* >= 80px requirement */
+  text-align: left;
+  background: var(--card);
+  border: 2.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  font-size: 1.3rem;             /* >= 20px requirement */
+  color: var(--ink);
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+.card:hover, .card:focus-visible { border-color: var(--terracotta); }
+.card:active { transform: scale(0.99); }
+
+.card-number {
+  flex: 0 0 auto;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 50%;
+  background: var(--terracotta);
+  color: #fff;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card.none .card-number { background: var(--slate); }
+
+.card-text { flex: 1 1 auto; }
+
+/* Confidence is shown, not hidden: uncertainty is information. */
+.card-confidence {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1.5px solid var(--line);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+}
+
+/* Gentle unclear state -- an honest answer, not a failure screen. */
+.unclear { padding: 0.4rem 0.2rem; }
+.unclear-title { margin: 0 0 0.3rem; font-size: 1.35rem; font-weight: 600; }
+.unclear-reason { margin: 0 0 0.3rem; color: var(--ink-soft); font-size: 1.1rem; }
+.unclear-help { margin: 0; font-size: 1.15rem; }
+
+/* Typing path */
+.type-instead { display: flex; gap: 0.6rem; margin-top: 1rem; flex-wrap: wrap; }
+
+.type-instead input {
+  flex: 1 1 260px;
+  font: inherit;
+  font-size: 1.15rem;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid var(--line);
+  border-radius: var(--radius);
+  background: var(--card);
+  color: var(--ink);
+}
+
+.type-add-btn {
+  border: 2px solid var(--terracotta);
+  background: var(--card);
+  color: var(--terracotta-deep);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  min-height: 48px;
+}
+
+/* ================= Conversation log ================= */
+
+.log-section { margin-top: 1.6rem; }
+
+.log-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.log-header h2 {
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  margin: 0.2rem 0;
+}
+
+.legend { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+
+/* Provenance chips: small colored labels that always carry their words. */
+.chip {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  color: #fff;
+  border-radius: 999px;
+  padding: 0.22rem 0.65rem;
+  white-space: nowrap;
+}
+
+.chip-verbatim  { background: var(--slate); }
+.chip-confirmed { background: var(--green); }
+.chip-companion { background: var(--blue); }
+
+.log { list-style: none; margin: 0.8rem 0 0; padding: 0; }
+
+.log-entry {
+  background: var(--card);
+  border: 1.5px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.log-entry-top {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.log-time { color: var(--ink-soft); font-size: 0.8rem; }
+
+.log-text { font-size: 1.2rem; }
+
+.log-source {
+  margin-top: 0.3rem;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.say-again {
+  margin-left: auto;
+  border: 1.5px solid var(--green);
+  background: var(--card);
+  color: var(--green);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  min-height: 40px;
+}
+
+.log-empty { color: var(--ink-soft); font-size: 1rem; }
+
+/* ================= Settings drawer ================= */
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(51, 41, 30, 0.45);
+  z-index: 5;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(440px, 94vw);
+  background: var(--paper);
+  border-left: 2px solid var(--line);
+  box-shadow: -8px 0 22px rgba(51, 41, 30, 0.25);
+  padding: 1.1rem 1.2rem 2rem;
+  overflow-y: auto;
+  z-index: 6;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.drawer-header h2 { font-family: Georgia, serif; margin: 0; }
+
+.drawer-close {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 2rem;
+  line-height: 1;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.drawer-block {
+  border-top: 2px solid var(--line);
+  padding-top: 0.9rem;
+  margin-top: 0.9rem;
+}
+
+.drawer-block h3 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+
+.drawer-note { color: var(--ink-soft); font-size: 0.9rem; margin: 0 0 0.7rem; }
+
+.drawer-block label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin: 0.7rem 0 0.25rem;
+}
+
+.drawer-block input[type="text"], .drawer-block textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.55rem 0.7rem;
+  border: 2px solid var(--line);
+  border-radius: 10px;
+  background: var(--card);
+  color: var(--ink);
+  resize: vertical;
+}
+
+.drawer-block input[type="range"] { width: 100%; margin: 0.4rem 0; }
+
+.drawer-row { display: flex; gap: 0.6rem; margin-top: 0.9rem; flex-wrap: wrap; }
+
+.drawer-btn {
+  border: 2px solid var(--line);
+  background: var(--card);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.55rem 1rem;
+  font-weight: 600;
+  min-height: 48px;
+}
+
+.drawer-btn.primary { border-color: var(--green); background: var(--green); color: #fff; }
+.drawer-btn.danger  { border-color: var(--danger); color: var(--danger); }
+
+.drawer-status { min-height: 1.3rem; color: var(--ink-soft); font-size: 0.9rem; margin: 0.5rem 0 0; }
+
+/* ================= Small screens ================= */
+
+@media (max-width: 560px) {
+  html { font-size: 17px; }
+  html.large-text { font-size: 20px; }
+  .top { flex-direction: column; align-items: stretch; }
+  .top-controls { justify-content: space-between; }
+}

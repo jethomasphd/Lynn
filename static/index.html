@@ -8,10 +8,147 @@
 </head>
 <body>
   <main class="app">
-    <h1>GetThrough</h1>
-    <p class="tagline">Help a voice still present get through.</p>
-    <p id="placeholder">Interface arrives in build step 2.</p>
+
+    <!-- ================= Header: brand, mode toggle, settings ============ -->
+    <header class="top">
+      <div class="brand">
+        <h1>GetThrough</h1>
+        <p class="tagline">Help a voice still present get through.</p>
+      </div>
+      <div class="top-controls">
+        <!-- Who is speaking right now. Patient turns get interpreted;
+             companion turns go straight into the log for context. -->
+        <div class="mode-toggle" role="group" aria-label="Who is speaking">
+          <button id="mode-patient" class="mode-btn active" aria-pressed="true">Patient</button>
+          <button id="mode-companion" class="mode-btn" aria-pressed="false">Companion</button>
+        </div>
+        <button id="settings-btn" class="settings-btn" aria-label="Open settings">Settings</button>
+      </div>
+    </header>
+
+    <!-- ================= Talk area: live transcript + one big mic ======== -->
+    <section class="talk" aria-label="Talk">
+      <div id="transcript" class="transcript" aria-live="polite">
+        <span class="transcript-hint">Tap the microphone, speak, then tap again.</span>
+      </div>
+
+      <button id="mic-btn" class="mic" aria-label="Start listening">
+        <svg class="mic-icon" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+          <path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4z"/>
+          <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V20H8.5a1 1 0 1 0 0 2h7a1 1 0 1 0 0-2H13v-2.08A7 7 0 0 0 19 11z"/>
+        </svg>
+        <span id="mic-label" class="mic-label">Tap to talk</span>
+      </button>
+      <p id="mic-status" class="mic-status" aria-live="polite"></p>
+    </section>
+
+    <!-- ================= Response area: candidates or unclear ============ -->
+    <!-- Invariant 1: the verbatim fragment stays visible right above the
+         cards that interpret it, always. -->
+    <section id="response-area" class="response-area hidden" aria-label="What you might mean">
+      <div class="fragment-echo">
+        <span class="chip chip-verbatim">said</span>
+        <span id="fragment-echo-text" class="fragment-echo-text"></span>
+      </div>
+
+      <div id="thinking" class="thinking hidden">Finding possible meanings&hellip;</div>
+
+      <!-- Cards 1-3 plus "None of these" are rendered here by app.js.
+           Invariant 3: "None of these" is always present, same size. -->
+      <div id="cards" class="cards"></div>
+
+      <!-- Invariant 5: when the model cannot tell, we say so gently
+           instead of forcing three guesses. -->
+      <div id="unclear-panel" class="unclear hidden">
+        <p class="unclear-title">I couldn&rsquo;t tell what you meant.</p>
+        <p id="unclear-reason" class="unclear-reason"></p>
+        <p class="unclear-help">Want to try again, or point/type instead?</p>
+      </div>
+
+      <!-- Typing path: whatever is typed becomes a card the patient still
+           has to tap to confirm -- typing never skips confirmation. -->
+      <div class="type-instead">
+        <input id="type-input" type="text" autocomplete="off"
+               placeholder="Or type what was meant&hellip;" aria-label="Type what was meant">
+        <button id="type-add" class="type-add-btn">Show as a choice</button>
+      </div>
+    </section>
+
+    <!-- ================= Conversation log with provenance chips ========== -->
+    <section class="log-section" aria-label="Conversation log">
+      <header class="log-header">
+        <h2>Conversation</h2>
+        <!-- Invariant 4: every utterance carries one of exactly three
+             provenance tags; this legend explains the chips. -->
+        <div class="legend">
+          <span class="chip chip-verbatim">patient-verbatim</span>
+          <span class="chip chip-confirmed">patient-confirmed-interpretation</span>
+          <span class="chip chip-companion">companion</span>
+        </div>
+      </header>
+      <ol id="log" class="log"></ol>
+      <p id="log-empty" class="log-empty">Nothing yet. The conversation appears here.</p>
+    </section>
   </main>
+
+  <!-- ================= Settings drawer ================================== -->
+  <div id="drawer-overlay" class="drawer-overlay hidden"></div>
+  <aside id="drawer" class="drawer hidden" aria-label="Settings">
+    <header class="drawer-header">
+      <h2>Settings</h2>
+      <button id="drawer-close" class="drawer-close" aria-label="Close settings">&times;</button>
+    </header>
+
+    <section class="drawer-block">
+      <h3>About this person</h3>
+      <p class="drawer-note">These notes are the only personalization there is. They are sent
+        with every interpretation and nothing is remembered anywhere else.
+        Delete a line and it is gone from all future guesses immediately.</p>
+
+      <label for="ctx-name">Name</label>
+      <input id="ctx-name" type="text" autocomplete="off">
+
+      <label for="ctx-people">People (one per line, e.g. &ldquo;Kirsti - wife&rdquo;)</label>
+      <textarea id="ctx-people" rows="3"></textarea>
+
+      <label for="ctx-needs">Common needs (one per line)</label>
+      <textarea id="ctx-needs" rows="3"></textarea>
+
+      <label for="ctx-words">Favorite words &amp; phrases (one per line)</label>
+      <textarea id="ctx-words" rows="3"></textarea>
+
+      <label for="ctx-places">Places (one per line)</label>
+      <textarea id="ctx-places" rows="2"></textarea>
+
+      <label for="ctx-notes">Notes from family (e.g. &ldquo;She says &lsquo;the cold thing&rsquo; for the refrigerator.&rdquo;)</label>
+      <textarea id="ctx-notes" rows="3"></textarea>
+
+      <div class="drawer-row">
+        <button id="ctx-save" class="drawer-btn primary">Save notes</button>
+        <button id="ctx-clear" class="drawer-btn danger">Clear all</button>
+      </div>
+      <p id="ctx-status" class="drawer-status" aria-live="polite"></p>
+    </section>
+
+    <section class="drawer-block">
+      <h3>Voice &amp; display</h3>
+      <label for="voice-rate">Speaking rate <span id="voice-rate-value">1.0</span></label>
+      <input id="voice-rate" type="range" min="0.7" max="1.2" step="0.05" value="1.0">
+      <div class="drawer-row">
+        <button id="text-size" class="drawer-btn" aria-pressed="false">Larger text: off</button>
+      </div>
+    </section>
+
+    <section class="drawer-block">
+      <h3>Session</h3>
+      <div class="drawer-row">
+        <button id="session-save" class="drawer-btn primary">Save session</button>
+        <button id="session-new" class="drawer-btn">New session</button>
+      </div>
+      <p id="session-status" class="drawer-status" aria-live="polite"></p>
+    </section>
+  </aside>
+
   <script src="app.js"></script>
 </body>
 </html>
