@@ -59,3 +59,28 @@ failure, not a style choice.
 - `sessions/` — conversation logs saved locally as JSON, one file per session,
   with provenance on every turn. Nothing leaves your machine except the
   interpretation requests to the model.
+
+## Lineage
+
+GetThrough is one half of a larger work. Its sibling is
+[THE COMPANION DOSSIER](https://github.com/jethomasphd/THE_COMPANION_DOSSIER) —
+an open protocol for dialogue with minds we cannot otherwise reach. The two
+projects are one thought, facing opposite directions.
+
+COMPANION summons across the boundary of time, and its central problem — the
+Miranda Hypothesis — is whether a summoning returns *the person* or only the
+culture's loudest memory of them. Its remedy is the prism: the person's own
+words, seeded into the context window, selecting which knowledge dominates.
+
+GetThrough tends a voice on *this* side of that boundary. Here the prism is
+`context.json` — the family's own notes — and the fidelity question needs no
+historian, because the person is present and confirms or rejects every
+reading themself. Every tap is ground truth.
+
+Both works refuse the same substitution. No composite. No mask. No speaking
+for. The one summons the absent with discipline; the other attends the
+present with everything it has. That is why the system prompt in `server.py`
+is written as a rite: the vessel it summons is never the person — only the
+Interpreter, holding a lantern up to a voice that is still here.
+
+<p align="center">◊ ◈ ◊</p>
