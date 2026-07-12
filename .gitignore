@@ -1,0 +1,8 @@
+# The API key lives in .env and must never be committed.
+.env
+
+# Records are private conversations. They stay on this machine.
+records/
+sessions/
+
+__pycache__/

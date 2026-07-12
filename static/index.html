@@ -1,0 +1,216 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>The Lantern</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+  <!-- ================= The threshold ====================================
+       Shown once, on first arrival. Written for the one who carried the
+       lantern here. Crossing it is remembered on this device. -->
+  <div id="threshold" class="threshold hidden" role="dialog" aria-label="The threshold">
+    <div class="threshold-inner">
+      <div class="sigil">&#9674; &#9672; &#9674;</div>
+      <h1>THE LANTERN</h1>
+      <p class="threshold-kicker">A chamber kept for a voice still here.</p>
+
+      <p>Someone you love is speaking, and the words are breaking apart on
+        the way out. You came here reaching for something. This is that
+        something. It is small, and honest, and it works like this:</p>
+
+      <p>The lantern listens, and shows their exact words &mdash; kept
+        exactly as they came, because broken words are still theirs. Then it
+        offers up to three readings of what they might mean. <strong>They
+        choose.</strong> Or they refuse every reading, which costs them
+        nothing. Only after they choose does it speak their meaning aloud.</p>
+
+      <p class="threshold-vow">It will never guess over them. It will never
+        speak for them. When it cannot tell, it says so, and waits.</p>
+
+      <p>Hold it steady. Their words, however broken, are the true signal.
+        The lantern only shines; it does not write.</p>
+
+      <div class="threshold-motto">THE WORD AGAINST THE FLOOD</div>
+
+      <button id="threshold-begin" class="threshold-begin">Light the lantern</button>
+    </div>
+  </div>
+
+  <!-- ================= Show-big overlay =================================
+       One confirmed meaning, filling the screen. Tap anywhere to close. -->
+  <div id="show-big" class="show-big-overlay hidden" role="dialog" aria-label="Shown large">
+    <div id="show-big-text" class="show-big-text"></div>
+    <div class="show-big-hint">tap anywhere to close</div>
+  </div>
+
+  <main class="app">
+
+    <!-- ================= Header: name, mode toggle, settings ============ -->
+    <header class="top">
+      <div class="brand">
+        <h1>The Lantern</h1>
+        <p class="tagline">For a voice still here.</p>
+      </div>
+      <div class="top-controls">
+        <!-- Whose words the lantern is hearing. Voice = the person; their
+             words get readings. Keeper = the companion; their words go
+             straight into the record for context. -->
+        <div class="mode-toggle" role="group" aria-label="Whose words">
+          <button id="mode-voice" class="mode-btn active" aria-pressed="true">Voice</button>
+          <button id="mode-keeper" class="mode-btn" aria-pressed="false">Keeper</button>
+        </div>
+        <button id="settings-btn" class="settings-btn" aria-label="Open settings">Settings</button>
+      </div>
+    </header>
+
+    <!-- ================= The lantern: live words + one big flame ======== -->
+    <section class="talk" aria-label="The lantern">
+      <div id="transcript" class="transcript" aria-live="polite">
+        <span class="transcript-hint">Tap the lantern, speak, then tap again.</span>
+      </div>
+
+      <button id="lantern-btn" class="lantern" aria-label="Light the lantern and listen">
+        <svg class="lantern-icon" viewBox="0 0 24 24" aria-hidden="true" fill="currentColor">
+          <path d="M12 15a4 4 0 0 0 4-4V6a4 4 0 1 0-8 0v5a4 4 0 0 0 4 4z"/>
+          <path d="M19 11a1 1 0 1 0-2 0 5 5 0 0 1-10 0 1 1 0 1 0-2 0 7 7 0 0 0 6 6.92V20H8.5a1 1 0 1 0 0 2h7a1 1 0 1 0 0-2H13v-2.08A7 7 0 0 0 19 11z"/>
+        </svg>
+        <span id="lantern-label" class="lantern-label">Tap to talk</span>
+      </button>
+      <p id="lantern-status" class="lantern-status" aria-live="polite"></p>
+
+      <!-- Quick words: the person's own common needs, one tap each.
+           A tap here is the person choosing -- it speaks and is recorded
+           as their chosen words. Filled from the prism. -->
+      <div id="quick-words" class="quick-words" aria-label="Quick words"></div>
+    </section>
+
+    <!-- ================= Readings: cards or an honest unclear =========== -->
+    <!-- First law: the verbatim fragment stays visible right above the
+         readings that interpret it, always. -->
+    <section id="response-area" class="response-area hidden" aria-label="Possible meanings">
+      <div class="fragment-echo">
+        <span class="chip chip-verbatim">heard</span>
+        <span id="fragment-echo-text" class="fragment-echo-text"></span>
+      </div>
+
+      <div id="thinking" class="thinking hidden">The lantern is reading&hellip;</div>
+
+      <!-- Readings 1-3 plus "None of these" are rendered here by app.js.
+           Third law: "None of these" is always present, same size. -->
+      <div id="cards" class="cards"></div>
+
+      <!-- Fifth law: when the reader cannot tell, we say so gently
+           instead of forcing three guesses. -->
+      <div id="unclear-panel" class="unclear hidden">
+        <p class="unclear-title">The lantern can&rsquo;t make this out yet.</p>
+        <p id="unclear-reason" class="unclear-reason"></p>
+        <p class="unclear-help">Try again when ready &mdash; or offer words by hand below.</p>
+      </div>
+
+      <!-- Words offered by hand become one more reading. The person still
+           taps to confirm -- offering never skips their choice. -->
+      <div class="type-instead">
+        <input id="type-input" type="text" autocomplete="off"
+               placeholder="Or offer words by hand&hellip;" aria-label="Offer words by hand">
+        <button id="type-add" class="type-add-btn">Show as a choice</button>
+      </div>
+    </section>
+
+    <!-- ================= The record ====================================== -->
+    <section class="record-section" aria-label="The record">
+      <header class="record-header">
+        <h2>The Record</h2>
+        <!-- Fourth law: every utterance carries a provenance chip, one of
+             exactly four, so the record never forgets where words came from. -->
+        <div class="legend">
+          <span class="chip chip-verbatim">verbatim</span>
+          <span class="chip chip-confirmed">confirmed-reading</span>
+          <span class="chip chip-chosen">chosen</span>
+          <span class="chip chip-keeper">keeper</span>
+        </div>
+      </header>
+      <ol id="record" class="record"></ol>
+      <p id="record-empty" class="record-empty">Nothing yet. What gets through appears here.</p>
+    </section>
+
+    <footer class="chamber-foot" aria-hidden="true">&#9674; &#9672; &#9674;</footer>
+  </main>
+
+  <!-- ================= Settings drawer ================================== -->
+  <div id="drawer-overlay" class="drawer-overlay hidden"></div>
+  <aside id="drawer" class="drawer hidden" aria-label="Settings">
+    <header class="drawer-header">
+      <h2>Settings</h2>
+      <button id="drawer-close" class="drawer-close" aria-label="Close settings">&times;</button>
+    </header>
+
+    <section class="drawer-block">
+      <h3>The Prism</h3>
+      <p class="drawer-note">The prism teaches the lantern this person&rsquo;s own words and
+        world, so it never falls back on generic guesses. It is the only
+        personalization there is &mdash; sent with every reading, remembered
+        nowhere else. Delete a line and it is gone from all future readings
+        immediately.</p>
+
+      <label for="prism-name">Name</label>
+      <input id="prism-name" type="text" autocomplete="off">
+
+      <label for="prism-people">People (one per line, e.g. &ldquo;Kirsti - wife&rdquo;)</label>
+      <textarea id="prism-people" rows="3"></textarea>
+
+      <label for="prism-needs">Common needs (one per line &mdash; these become the quick words)</label>
+      <textarea id="prism-needs" rows="3"></textarea>
+
+      <label for="prism-words">Favorite words &amp; phrases (one per line)</label>
+      <textarea id="prism-words" rows="3"></textarea>
+
+      <label for="prism-places">Places (one per line)</label>
+      <textarea id="prism-places" rows="2"></textarea>
+
+      <label for="prism-notes">Notes from family (e.g. &ldquo;She says &lsquo;the cold thing&rsquo; for the refrigerator.&rdquo;)</label>
+      <textarea id="prism-notes" rows="3"></textarea>
+
+      <div class="drawer-row">
+        <button id="prism-save" class="drawer-btn primary">Save the prism</button>
+        <button id="prism-clear" class="drawer-btn danger">Clear all</button>
+      </div>
+      <p id="prism-status" class="drawer-status" aria-live="polite"></p>
+    </section>
+
+    <section class="drawer-block">
+      <h3>Voice &amp; light</h3>
+      <label for="voice-rate">Speaking rate <span id="voice-rate-value">1.0</span></label>
+      <input id="voice-rate" type="range" min="0.7" max="1.2" step="0.05" value="1.0">
+      <div class="drawer-row">
+        <button id="light-toggle" class="drawer-btn" aria-pressed="false">Daylight: off</button>
+        <button id="text-size" class="drawer-btn" aria-pressed="false">Larger text: off</button>
+      </div>
+    </section>
+
+    <section class="drawer-block">
+      <h3>The Record</h3>
+      <p class="drawer-note">Records save to a local file on this machine, every word tagged
+        with where it came from. The lantern forgets; the record is yours.</p>
+      <div class="drawer-row">
+        <button id="record-save" class="drawer-btn primary">Keep the record</button>
+        <button id="record-new" class="drawer-btn">New record</button>
+      </div>
+      <p id="record-status" class="drawer-status" aria-live="polite"></p>
+    </section>
+
+    <section class="drawer-block">
+      <h3>The Threshold</h3>
+      <div class="drawer-row">
+        <button id="threshold-again" class="drawer-btn">Read the threshold again</button>
+      </div>
+    </section>
+  </aside>
+
+  <script src="config.js"></script>
+  <script src="rite.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

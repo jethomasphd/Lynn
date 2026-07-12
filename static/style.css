@@ -1,0 +1,651 @@
+/* ==========================================================================
+   THE LANTERN -- the chamber's design system
+
+   Two rooms, one chamber:
+     LAMPLIGHT (default) -- the estate's night: warm void, bone text, gold
+       flame. Built for the hospital room at 2 a.m., where a white screen
+       is an assault and a lantern is a kindness.
+     DAYLIGHT (toggle)   -- the porch: warm paper and ink, for bright rooms
+       and eyes that prefer dark-on-light.
+
+   The person using this may have impaired language, vision, and motor
+   control, so in both rooms:
+     - big targets (lantern >= 96px, reading cards >= 80px, buttons >= 48px)
+     - big text (live words >= 24px, reading text >= 20px)
+     - every text/background pair holds WCAG AA (audited, not assumed)
+     - color is never the only signal: chips carry words, states carry text
+   ========================================================================== */
+
+:root {
+  /* LAMPLIGHT -- void / gold / bone */
+  --bg: #171009;            /* the room at night                        */
+  --surface: #251a10;       /* raised surfaces in the lantern's circle  */
+  --edge: #46331d;          /* hairline borders                         */
+  --ink: #f2e7d3;           /* bone -- primary text (~15:1 on bg)       */
+  --ink-soft: #cdb897;      /* secondary text (~8:1 on surface)         */
+  --accent: #d9a33e;        /* the flame -- gold                        */
+  --on-accent: #2a1a06;     /* text set on gold                         */
+  --halo: rgba(217, 163, 62, 0.28);  /* the glow around the lit lantern */
+  --confirm: #a4d0b0;       /* say-again / confirmed accents            */
+  --danger: #f0a08d;
+  --focus: #ffd27a;
+
+  /* provenance chips: light grounds, dark words -- legible at chip size */
+  --chip-verbatim-bg: #aeb9cb;  --chip-verbatim-fg: #131c2b;
+  --chip-confirmed-bg: #a4d0b0; --chip-confirmed-fg: #0e2b18;
+  --chip-chosen-bg: #e8cf96;    --chip-chosen-fg: #33240a;
+  --chip-keeper-bg: #a9c9ea;    --chip-keeper-fg: #102a44;
+
+  --radius: 14px;
+}
+
+/* DAYLIGHT -- the proven warm-paper room from the chamber's first life */
+html.daylight {
+  --bg: #f6f0e5;
+  --surface: #fffdf8;
+  --edge: #ddd0ba;
+  --ink: #33291e;
+  --ink-soft: #6a5b49;
+  --accent: #a8431c;        /* terracotta flame for daylight            */
+  --on-accent: #ffffff;
+  --halo: rgba(168, 67, 28, 0.18);
+  --confirm: #276749;
+  --danger: #9b2c2c;
+  --focus: #1d4f91;
+
+  --chip-verbatim-bg: #4c5566;  --chip-verbatim-fg: #ffffff;
+  --chip-confirmed-bg: #2e6b47; --chip-confirmed-fg: #ffffff;
+  --chip-chosen-bg: #8a6413;    --chip-chosen-fg: #ffffff;
+  --chip-keeper-bg: #2f5f8f;    --chip-keeper-fg: #ffffff;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 19px; }
+html.large-text { font-size: 23px; }   /* the "Larger text" toggle */
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Seravek", "Gill Sans", "Trebuchet MS", "Segoe UI", system-ui, sans-serif;
+  line-height: 1.45;
+  transition: background 400ms ease, color 400ms ease;
+}
+
+button { font: inherit; cursor: pointer; }
+button:focus-visible, input:focus-visible, textarea:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+.hidden { display: none !important; }
+
+.app {
+  max-width: 880px;
+  margin: 0 auto;
+  padding: 1.1rem 1.1rem 4rem;
+}
+
+/* ================= The threshold =================
+   The first crossing. Always night, whatever room lies beyond --
+   you step out of the dark into the lantern's circle. */
+
+.threshold {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  background: #120b06;
+  color: #f2e7d3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  overflow-y: auto;
+}
+
+.threshold-inner {
+  max-width: 34rem;
+  text-align: center;
+  margin: auto;             /* keeps it centered AND scrollable if small */
+}
+
+.threshold .sigil {
+  color: #d9a33e;
+  letter-spacing: 0.6em;
+  margin-bottom: 1.4rem;
+  font-size: 1rem;
+}
+
+.threshold h1 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 2.3rem;
+  letter-spacing: 0.14em;
+  margin: 0 0 0.4rem;
+}
+
+.threshold .threshold-kicker {
+  color: #cdb897;
+  font-style: italic;
+  margin: 0 0 1.6rem;
+}
+
+.threshold p {
+  text-align: left;
+  font-size: 1.05rem;
+  line-height: 1.65;
+  margin: 0 0 1rem;
+  color: #e7d9c0;
+}
+
+.threshold .threshold-vow {
+  text-align: center;
+  color: #f2e7d3;
+  font-style: italic;
+}
+
+.threshold .threshold-motto {
+  margin: 1.6rem 0 1.5rem;
+  color: #d9a33e;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+}
+
+.threshold-begin {
+  border: 2px solid #d9a33e;
+  background: #d9a33e;
+  color: #2a1a06;
+  font-weight: 700;
+  font-size: 1.15rem;
+  border-radius: 999px;
+  padding: 0.9rem 2.4rem;
+  min-height: 56px;
+  box-shadow: 0 0 34px rgba(217, 163, 62, 0.35);
+}
+
+.threshold-begin:hover { box-shadow: 0 0 50px rgba(217, 163, 62, 0.5); }
+
+/* ================= Header ================= */
+
+.top {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 0.8rem;
+  padding-bottom: 0.9rem;
+  border-bottom: 2px solid var(--edge);
+}
+
+h1 {
+  margin: 0;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.9rem;
+  letter-spacing: 0.06em;
+}
+
+.tagline {
+  margin: 0.1rem 0 0;
+  color: var(--ink-soft);
+  font-size: 0.85rem;
+}
+
+.top-controls { display: flex; align-items: center; gap: 0.7rem; flex-wrap: wrap; }
+
+/* Mode toggle: whose words the lantern is hearing.
+   Voice = the person. Keeper = the companion tending the lantern. */
+.mode-toggle {
+  display: flex;
+  border: 2px solid var(--accent);
+  border-radius: 999px;
+  overflow: hidden;
+  background: var(--surface);
+}
+
+.mode-btn {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  padding: 0.55rem 1.1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  min-height: 48px;
+}
+
+.mode-btn.active { background: var(--accent); color: var(--on-accent); }
+
+.settings-btn {
+  border: 2px solid var(--edge);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.55rem 1rem;
+  min-height: 48px;
+  font-weight: 600;
+}
+
+/* ================= The lantern (talk area) ================= */
+
+.talk {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1.4rem 0 0.6rem;
+}
+
+/* Live words: what the lantern is hearing, verbatim, as it happens. */
+.transcript {
+  width: 100%;
+  min-height: 4.2rem;
+  background: var(--surface);
+  border: 2px solid var(--edge);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  font-size: 1.5rem;            /* >= 24px in the base size */
+  line-height: 1.4;
+  margin-bottom: 1.3rem;
+}
+
+.transcript-hint { color: var(--ink-soft); font-size: 1.15rem; }
+.transcript .interim { color: var(--ink-soft); }
+
+/* The lantern itself: one giant round button, glowing. 136px. */
+.lantern {
+  width: 136px;
+  height: 136px;
+  border-radius: 50%;
+  border: 0;
+  background: radial-gradient(circle at 50% 38%, #f0c46a, var(--accent) 62%, #9a6b1d 100%);
+  color: var(--on-accent);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.15rem;
+  box-shadow: 0 0 26px var(--halo);
+  transition: transform 120ms ease, box-shadow 300ms ease;
+}
+
+html.daylight .lantern {
+  background: radial-gradient(circle at 50% 38%, #c25a2c, var(--accent) 62%, #7c2f10 100%);
+}
+
+.lantern:active { transform: scale(0.96); }
+.lantern-icon { width: 52px; height: 52px; }
+.lantern-label { font-size: 0.82rem; font-weight: 700; letter-spacing: 0.02em; }
+
+/* Lit state: the glow widens and breathes -- slow and calm, never urgent. */
+.lantern.lit {
+  animation: breathe 2.2s ease-in-out infinite;
+}
+
+@keyframes breathe {
+  0%, 100% { box-shadow: 0 0 26px var(--halo), 0 0 0 0 var(--halo); }
+  50%      { box-shadow: 0 0 46px var(--halo), 0 0 0 24px rgba(0, 0, 0, 0); }
+}
+
+.lantern-status {
+  min-height: 1.5rem;
+  margin: 0.8rem 0 0;
+  color: var(--ink-soft);
+  font-size: 1.05rem;
+  text-align: center;
+}
+
+/* Quick words: the person's own common needs as one-tap choices.
+   A tap here IS the person choosing -- it speaks and enters the record. */
+.quick-words {
+  width: 100%;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.6rem;
+  justify-content: center;
+  margin-top: 1.1rem;
+}
+
+.quick-word {
+  border: 2px solid var(--edge);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: 999px;
+  padding: 0.6rem 1.2rem;
+  font-size: 1.15rem;
+  font-weight: 600;
+  min-height: 56px;
+}
+
+.quick-word:hover, .quick-word:focus-visible { border-color: var(--accent); }
+
+/* ================= Readings (cards / unclear) ================= */
+
+.response-area {
+  margin-top: 1rem;
+  padding: 1.1rem;
+  background: var(--surface);
+  border: 2px solid var(--edge);
+  border-radius: var(--radius);
+}
+
+/* First law: the raw fragment sits right here, above its readings. */
+.fragment-echo {
+  display: flex;
+  align-items: baseline;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.9rem;
+}
+
+.fragment-echo-text { font-size: 1.25rem; font-style: italic; }
+
+.thinking { color: var(--ink-soft); font-size: 1.15rem; padding: 0.6rem 0.2rem; }
+
+.cards { display: flex; flex-direction: column; gap: 0.85rem; }
+
+/* Reading cards and "None of these" share the exact same box:
+   same min-height, same border, same text size (third law). */
+.card {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  width: 100%;
+  min-height: 92px;              /* >= 80px requirement */
+  text-align: left;
+  background: var(--bg);
+  border: 2.5px solid var(--edge);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  font-size: 1.3rem;             /* >= 20px requirement */
+  color: var(--ink);
+  transition: border-color 120ms ease, transform 120ms ease;
+}
+
+html.daylight .card { background: var(--surface); }
+
+.card:hover, .card:focus-visible { border-color: var(--accent); }
+.card:active { transform: scale(0.99); }
+
+.card-number {
+  flex: 0 0 auto;
+  width: 2.3rem;
+  height: 2.3rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.card.none .card-number { background: var(--chip-verbatim-bg); color: var(--chip-verbatim-fg); }
+
+.card-text { flex: 1 1 auto; }
+
+/* Confidence is shown, not hidden: uncertainty is information. */
+.card-confidence {
+  flex: 0 0 auto;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-soft);
+  border: 1.5px solid var(--edge);
+  border-radius: 999px;
+  padding: 0.2rem 0.6rem;
+}
+
+/* Gentle unclear state -- an honest answer, not a failure screen. */
+.unclear { padding: 0.4rem 0.2rem; }
+.unclear-title { margin: 0 0 0.3rem; font-size: 1.35rem; font-weight: 600; }
+.unclear-reason { margin: 0 0 0.3rem; color: var(--ink-soft); font-size: 1.1rem; }
+.unclear-help { margin: 0; font-size: 1.15rem; }
+
+/* Offering words by hand: typed words become a card the person still taps. */
+.type-instead { display: flex; gap: 0.6rem; margin-top: 1rem; flex-wrap: wrap; }
+
+.type-instead input {
+  flex: 1 1 260px;
+  font: inherit;
+  font-size: 1.15rem;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--bg);
+  color: var(--ink);
+}
+
+html.daylight .type-instead input { background: var(--surface); }
+
+.type-add-btn {
+  border: 2px solid var(--accent);
+  background: transparent;
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.6rem 1rem;
+  font-weight: 600;
+  min-height: 48px;
+}
+
+/* ================= The record ================= */
+
+.record-section { margin-top: 1.6rem; }
+
+.record-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.record-header h2 {
+  font-family: Georgia, serif;
+  font-size: 1.3rem;
+  margin: 0.2rem 0;
+}
+
+.legend { display: flex; gap: 0.45rem; flex-wrap: wrap; }
+
+/* Provenance chips: small labels that always carry their words. */
+.chip {
+  display: inline-block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  border-radius: 999px;
+  padding: 0.22rem 0.65rem;
+  white-space: nowrap;
+}
+
+.chip-verbatim  { background: var(--chip-verbatim-bg);  color: var(--chip-verbatim-fg); }
+.chip-confirmed { background: var(--chip-confirmed-bg); color: var(--chip-confirmed-fg); }
+.chip-chosen    { background: var(--chip-chosen-bg);    color: var(--chip-chosen-fg); }
+.chip-keeper    { background: var(--chip-keeper-bg);    color: var(--chip-keeper-fg); }
+
+.record { list-style: none; margin: 0.8rem 0 0; padding: 0; }
+
+.record-entry {
+  background: var(--surface);
+  border: 1.5px solid var(--edge);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.6rem;
+}
+
+.record-entry-top {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.record-time { color: var(--ink-soft); font-size: 0.8rem; }
+
+.record-text { font-size: 1.2rem; }
+
+.record-source {
+  margin-top: 0.3rem;
+  color: var(--ink-soft);
+  font-size: 0.95rem;
+  font-style: italic;
+}
+
+.entry-actions { margin-left: auto; display: flex; gap: 0.4rem; }
+
+.say-again, .show-big {
+  border: 1.5px solid var(--confirm);
+  background: transparent;
+  color: var(--confirm);
+  border-radius: 999px;
+  padding: 0.3rem 0.8rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  min-height: 40px;
+}
+
+.record-empty { color: var(--ink-soft); font-size: 1rem; }
+
+/* ================= Show-big overlay =================
+   One confirmed meaning, filling the screen -- for the noisy room,
+   the hard-of-hearing visitor, the nurse across the bed.
+   Always night: dark ground, bright words, maximum reach. */
+
+.show-big-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 15;
+  background: #120b06;
+  color: #f2e7d3;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  cursor: pointer;
+}
+
+.show-big-text {
+  font-size: clamp(2.4rem, 7.5vw, 5.2rem);
+  line-height: 1.25;
+  text-align: center;
+  max-width: 22ch;
+}
+
+.show-big-hint {
+  position: fixed;
+  bottom: 1.2rem;
+  left: 0;
+  right: 0;
+  text-align: center;
+  color: #cdb897;
+  font-size: 0.9rem;
+}
+
+/* ================= Settings drawer ================= */
+
+.drawer-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(10, 6, 3, 0.6);
+  z-index: 5;
+}
+
+.drawer {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(440px, 94vw);
+  background: var(--bg);
+  border-left: 2px solid var(--edge);
+  box-shadow: -8px 0 22px rgba(0, 0, 0, 0.45);
+  padding: 1.1rem 1.2rem 2rem;
+  overflow-y: auto;
+  z-index: 6;
+}
+
+.drawer-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.4rem;
+}
+
+.drawer-header h2 { font-family: Georgia, serif; margin: 0; }
+
+.drawer-close {
+  border: 0;
+  background: transparent;
+  color: var(--ink);
+  font-size: 2rem;
+  line-height: 1;
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+}
+
+.drawer-block {
+  border-top: 2px solid var(--edge);
+  padding-top: 0.9rem;
+  margin-top: 0.9rem;
+}
+
+.drawer-block h3 { margin: 0 0 0.4rem; font-size: 1.05rem; }
+
+.drawer-note { color: var(--ink-soft); font-size: 0.9rem; margin: 0 0 0.7rem; }
+
+.drawer-block label {
+  display: block;
+  font-weight: 600;
+  font-size: 0.92rem;
+  margin: 0.7rem 0 0.25rem;
+}
+
+.drawer-block input[type="text"], .drawer-block textarea {
+  width: 100%;
+  font: inherit;
+  font-size: 1rem;
+  padding: 0.55rem 0.7rem;
+  border: 2px solid var(--edge);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  resize: vertical;
+}
+
+.drawer-block input[type="range"] { width: 100%; margin: 0.4rem 0; }
+
+.drawer-row { display: flex; gap: 0.6rem; margin-top: 0.9rem; flex-wrap: wrap; }
+
+.drawer-btn {
+  border: 2px solid var(--edge);
+  background: var(--surface);
+  color: var(--ink);
+  border-radius: var(--radius);
+  padding: 0.55rem 1rem;
+  font-weight: 600;
+  min-height: 48px;
+}
+
+.drawer-btn.primary { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.drawer-btn.danger  { border-color: var(--danger); color: var(--danger); }
+
+.drawer-status { min-height: 1.3rem; color: var(--ink-soft); font-size: 0.9rem; margin: 0.5rem 0 0; }
+
+.chamber-foot {
+  margin-top: 2.2rem;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.78rem;
+  letter-spacing: 0.4em;
+}
+
+/* ================= Small screens ================= */
+
+@media (max-width: 560px) {
+  html { font-size: 17px; }
+  html.large-text { font-size: 20px; }
+  .top { flex-direction: column; align-items: stretch; }
+  .top-controls { justify-content: space-between; }
+}

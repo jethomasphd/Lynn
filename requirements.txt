@@ -1,0 +1,7 @@
+# THE LANTERN runs on exactly four packages, on purpose (see SEED.md, the
+# origin document). FastAPI + uvicorn serve one small backend file;
+# anthropic talks to the model; python-dotenv reads the key from .env.
+fastapi
+uvicorn
+anthropic
+python-dotenv
