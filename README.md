@@ -160,7 +160,7 @@ repository as [SEED.md](SEED.md), the origin document and the record.
 ## Attribution
 
 Compiled by **Jacob E. Thomas, PhD** · with Claude (Anthropic)
-For Lynn.
+For D. Lynn P. T..
 
 <p align="center">◊ ◈ ◊</p>
 
