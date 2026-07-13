@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- THE LANTERN: the estate's sigil diamond, lit, in the night room. -->
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="46%" r="60%">
+      <stop offset="0%" stop-color="#f0c46a" stop-opacity="0.9"/>
+      <stop offset="45%" stop-color="#d9a33e" stop-opacity="0.35"/>
+      <stop offset="100%" stop-color="#d9a33e" stop-opacity="0"/>
+    </radialGradient>
+    <radialGradient id="gem" cx="50%" cy="38%" r="70%">
+      <stop offset="0%" stop-color="#f3cd7d"/>
+      <stop offset="60%" stop-color="#d9a33e"/>
+      <stop offset="100%" stop-color="#a8641e"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="#171009"/>
+  <circle cx="256" cy="246" r="190" fill="url(#glow)"/>
+  <g transform="translate(256 246)">
+    <path d="M0 -118 L86 0 L0 118 L-86 0 Z" fill="url(#gem)"/>
+    <path d="M0 -118 L86 0 L0 118 L-86 0 Z" fill="none" stroke="#f2e7d3" stroke-opacity="0.5" stroke-width="6"/>
+  </g>
+  <g fill="#d9a33e" opacity="0.85">
+    <path d="M96 246 l14 -19 14 19 -14 19 Z"/>
+    <path d="M388 246 l14 -19 14 19 -14 19 Z"/>
+  </g>
+</svg>

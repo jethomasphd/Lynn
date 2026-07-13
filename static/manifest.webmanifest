@@ -1,0 +1,14 @@
+{
+  "name": "The Lantern",
+  "short_name": "Lantern",
+  "description": "A live communication aid for a voice still here. It listens, shows exact words, offers readings — and only speaks what the person chooses.",
+  "start_url": "./",
+  "display": "standalone",
+  "background_color": "#171009",
+  "theme_color": "#171009",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

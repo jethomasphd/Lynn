@@ -2,9 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
   <title>The Lantern</title>
+  <meta name="description" content="A live communication aid for a voice still here. It listens, shows exact words, offers readings — and only speaks what the person chooses.">
+  <meta name="theme-color" id="theme-color-meta" content="#171009">
   <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
 </head>
 <body>
 
@@ -36,6 +41,9 @@
       <div class="threshold-motto">THE WORD AGAINST THE FLOOD</div>
 
       <button id="threshold-begin" class="threshold-begin">Light the lantern</button>
+
+      <div><a class="threshold-book-link" href="about.html">The whole story, the rite, and the laws:
+        The Book of the Lantern &rarr;</a></div>
     </div>
   </div>
 
@@ -62,9 +70,14 @@
           <button id="mode-voice" class="mode-btn active" aria-pressed="true">Voice</button>
           <button id="mode-keeper" class="mode-btn" aria-pressed="false">Keeper</button>
         </div>
+        <button class="hh" aria-expanded="false" aria-controls="tip-mode" aria-label="What do Voice and Keeper mean?">?</button>
         <button id="settings-btn" class="settings-btn" aria-label="Open settings">Settings</button>
       </div>
     </header>
+    <div class="hh-tip" id="tip-mode"><strong>Voice</strong> is the person the lantern serves —
+      their words get readings to choose from. <strong>Keeper</strong> is whoever tends the
+      lantern with them — keeper words go straight into the record, as context, with no readings.
+      Switch before tapping the lantern.</div>
 
     <!-- ================= The lantern: live words + one big flame ======== -->
     <section class="talk" aria-label="The lantern">
@@ -85,6 +98,15 @@
            A tap here is the person choosing -- it speaks and is recorded
            as their chosen words. Filled from the prism. -->
       <div id="quick-words" class="quick-words" aria-label="Quick words"></div>
+
+      <!-- Offer-by-hand: revealed when this browser cannot hear speech
+           (many iPhones). Typed words become a card the person still taps
+           -- the second law holds on every device. -->
+      <div id="hand-row" class="hand-row hidden">
+        <input id="hand-input" type="text" autocomplete="off"
+               placeholder="Offer words by hand&hellip;" aria-label="Offer words by hand">
+        <button id="hand-add" class="type-add-btn">Show as a choice</button>
+      </div>
     </section>
 
     <!-- ================= Readings: cards or an honest unclear =========== -->
@@ -122,7 +144,9 @@
     <!-- ================= The record ====================================== -->
     <section class="record-section" aria-label="The record">
       <header class="record-header">
-        <h2>The Record</h2>
+        <h2>The Record
+          <button class="hh" aria-expanded="false" aria-controls="tip-chips" aria-label="What do the colored tags mean?">?</button>
+        </h2>
         <!-- Fourth law: every utterance carries a provenance chip, one of
              exactly four, so the record never forgets where words came from. -->
         <div class="legend">
@@ -132,11 +156,21 @@
           <span class="chip chip-keeper">keeper</span>
         </div>
       </header>
+      <div class="hh-tip" id="tip-chips">Every line remembers where its words came from:
+        <strong>verbatim</strong> — their exact words, untouched;
+        <strong>confirmed-reading</strong> — a reading they chose by tap (it keeps the
+        original fragment underneath, always);
+        <strong>chosen</strong> — words they picked by hand;
+        <strong>keeper</strong> — the companion speaking for themself.
+        The lantern never writes a line of its own.</div>
       <ol id="record" class="record"></ol>
       <p id="record-empty" class="record-empty">Nothing yet. What gets through appears here.</p>
     </section>
 
-    <footer class="chamber-foot" aria-hidden="true">&#9674; &#9672; &#9674;</footer>
+    <footer class="chamber-foot">
+      <a href="about.html" style="color: inherit; text-decoration: none;"
+         aria-label="Open the Book of the Lantern">&#9674; &#9672; &#9674;</a>
+    </footer>
   </main>
 
   <!-- ================= Settings drawer ================================== -->
@@ -148,7 +182,15 @@
     </header>
 
     <section class="drawer-block">
-      <h3>The Prism</h3>
+      <h3>The Prism
+        <button class="hh" aria-expanded="false" aria-controls="tip-prism" aria-label="What is the prism?">?</button>
+      </h3>
+      <div class="hh-tip" id="tip-prism">Without these notes, a model falls back on what
+        &ldquo;a patient&rdquo; generically wants. The prism bends every reading toward
+        <em>this</em> person instead: their people, their places, their private words.
+        It rides along with each reading and is stored nowhere else &mdash; on this
+        device in cloud mode, in <code>prism.json</code> at the hearth.
+        <a href="about.html#prism">More in the Book &rarr;</a></div>
       <p class="drawer-note">The prism teaches the lantern this person&rsquo;s own words and
         world, so it never falls back on generic guesses. It is the only
         personalization there is &mdash; sent with every reading, remembered
@@ -202,8 +244,11 @@
     </section>
 
     <section class="drawer-block">
-      <h3>The Threshold</h3>
+      <h3>The Book</h3>
+      <p class="drawer-note">The story, the working, the rite itself, how to use this,
+        and what is forbidden &mdash; all of it, in one place.</p>
       <div class="drawer-row">
+        <a class="drawer-btn" href="about.html" style="text-decoration: none; display: inline-flex; align-items: center;">Open the Book of the Lantern</a>
         <button id="threshold-again" class="drawer-btn">Read the threshold again</button>
       </div>
     </section>

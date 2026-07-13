@@ -641,6 +641,271 @@ html.daylight .type-instead input { background: var(--surface); }
   letter-spacing: 0.4em;
 }
 
+/* ================= Cognitive handholds =================
+   The estate's "?" marks: small gold doors that open a plain-language
+   note in place. Tap to open, tap to close. One line of context for
+   whoever just walked into the room. */
+
+.hh {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 1.5rem;
+  height: 1.5rem;
+  min-height: 0;
+  padding: 0;
+  margin-left: 0.45rem;
+  border-radius: 50%;
+  border: 1.5px solid var(--accent);
+  background: transparent;
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 700;
+  vertical-align: middle;
+  flex: 0 0 auto;
+}
+
+.hh[aria-expanded="true"] { background: var(--accent); color: var(--on-accent); }
+
+.hh-tip {
+  display: none;
+  margin: 0.5rem 0;
+  padding: 0.7rem 0.9rem;
+  border: 1.5px solid var(--accent);
+  border-radius: 10px;
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 0.95rem;
+  font-weight: 400;
+  line-height: 1.5;
+  text-align: left;
+  letter-spacing: normal;
+  text-transform: none;
+}
+
+.hh-tip.open { display: block; }
+.hh-tip a { color: var(--accent); }
+
+/* ================= Offer-by-hand row =================
+   Shown when this browser cannot hear speech (many iPhones): the person
+   can still choose words by hand -- typed words become a card that still
+   takes their tap. */
+
+.hand-row {
+  width: 100%;
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: 1rem;
+}
+
+.hand-row input {
+  flex: 1 1 220px;
+  font: inherit;
+  font-size: 1.15rem;
+  padding: 0.7rem 0.9rem;
+  border: 2px solid var(--edge);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: var(--ink);
+}
+
+/* ================= The Book (about.html) ================= */
+
+.book {
+  max-width: 42rem;
+  margin: 0 auto;
+  padding: 1.4rem 1.2rem 4rem;
+}
+
+.book-head { text-align: center; padding: 1.6rem 0 0.6rem; }
+
+.book-head .sigil { color: var(--accent); letter-spacing: 0.6em; font-size: 0.95rem; }
+
+.book-head h1 {
+  font-size: 2.1rem;
+  letter-spacing: 0.12em;
+  margin: 0.8rem 0 0.2rem;
+}
+
+.book-head .kicker { color: var(--ink-soft); font-style: italic; margin: 0 0 0.4rem; }
+
+.book-nav {
+  display: flex;
+  justify-content: center;
+  gap: 0.8rem;
+  flex-wrap: wrap;
+  margin: 1rem 0 0;
+}
+
+.book-nav a {
+  color: var(--accent);
+  text-decoration: none;
+  border: 1.5px solid var(--edge);
+  border-radius: 999px;
+  padding: 0.45rem 1rem;
+  font-size: 0.92rem;
+  font-weight: 600;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+.book-nav a:hover, .book-nav a:focus-visible { border-color: var(--accent); }
+
+.part { margin-top: 2.6rem; }
+
+.part-kicker {
+  color: var(--accent);
+  font-size: 0.8rem;
+  font-weight: 700;
+  letter-spacing: 0.35em;
+  text-transform: uppercase;
+}
+
+.part h2 {
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1.55rem;
+  margin: 0.3rem 0 0.9rem;
+}
+
+.part p, .part li { font-size: 1.05rem; line-height: 1.7; }
+
+.part p { margin: 0 0 0.9rem; }
+
+.part ul, .part ol { padding-left: 1.3rem; margin: 0 0 0.9rem; }
+
+.part li { margin-bottom: 0.45rem; }
+
+.vow {
+  text-align: center;
+  font-style: italic;
+  color: var(--ink);
+  padding: 0.4rem 1rem;
+  margin: 1.2rem 0;
+}
+
+.book blockquote {
+  margin: 1.2rem 0;
+  padding: 0.8rem 1.1rem;
+  border-left: 3px solid var(--accent);
+  background: var(--surface);
+  border-radius: 0 10px 10px 0;
+  color: var(--ink);
+  font-style: italic;
+}
+
+.book blockquote .attr { display: block; margin-top: 0.5rem; font-style: normal; color: var(--ink-soft); font-size: 0.9rem; }
+
+/* The five movements of the working */
+.movements { list-style: none; padding: 0; counter-reset: movement; }
+
+.movements li {
+  background: var(--surface);
+  border: 1.5px solid var(--edge);
+  border-radius: var(--radius);
+  padding: 0.8rem 1rem 0.8rem 3.4rem;
+  margin-bottom: 0.6rem;
+  position: relative;
+  counter-increment: movement;
+}
+
+.movements li::before {
+  content: counter(movement);
+  position: absolute;
+  left: 0.9rem;
+  top: 0.85rem;
+  width: 1.8rem;
+  height: 1.8rem;
+  border-radius: 50%;
+  background: var(--accent);
+  color: var(--on-accent);
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.movements b { display: block; margin-bottom: 0.15rem; }
+
+/* The rite, rendered live from rite.js */
+.rite-block {
+  background: var(--surface);
+  border: 1.5px solid var(--edge);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.82rem;
+  line-height: 1.55;
+  color: var(--ink);
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.rite-note { color: var(--ink-soft); font-size: 0.9rem; margin-top: 0.5rem; }
+
+/* The two probes: real inputs, real outputs */
+.probe {
+  background: var(--surface);
+  border: 1.5px solid var(--edge);
+  border-radius: var(--radius);
+  padding: 0.9rem 1rem;
+  margin-bottom: 0.8rem;
+}
+
+.probe .probe-name {
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  font-size: 0.85rem;
+  text-transform: uppercase;
+  color: var(--accent);
+  margin: 0 0 0.4rem;
+}
+
+.probe code, .part code {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  font-size: 0.88em;
+  background: var(--bg);
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: 0.1rem 0.35rem;
+  overflow-wrap: break-word;
+}
+
+html.daylight .probe code, html.daylight .part code { background: var(--surface); }
+
+.book-foot {
+  margin-top: 3rem;
+  text-align: center;
+  color: var(--ink-soft);
+  font-size: 0.9rem;
+}
+
+.book-foot .sigil { color: var(--accent); letter-spacing: 0.6em; margin-top: 0.8rem; }
+
+/* threshold link to the book */
+.threshold-book-link {
+  display: inline-block;
+  margin-top: 1.2rem;
+  color: #cdb897;
+  font-size: 0.9rem;
+}
+
+/* ================= Mobile & touch polish ================= */
+
+/* Kill tap-delay and accidental double-tap zoom on controls. */
+button, .card, .quick-word, input, textarea { touch-action: manipulation; }
+button { -webkit-tap-highlight-color: transparent; }
+
+/* Calm for those who need stillness. */
+@media (prefers-reduced-motion: reduce) {
+  .lantern.lit { animation: none; box-shadow: 0 0 46px var(--halo); }
+  body { transition: none; }
+}
+
 /* ================= Small screens ================= */
 
 @media (max-width: 560px) {
@@ -648,4 +913,10 @@ html.daylight .type-instead input { background: var(--surface); }
   html.large-text { font-size: 20px; }
   .top { flex-direction: column; align-items: stretch; }
   .top-controls { justify-content: space-between; }
+  .app { padding: 0.8rem 0.8rem 3rem; }
+  .card { gap: 0.7rem; padding: 0.8rem 0.9rem; }
+  .entry-actions { margin-left: 0; width: 100%; justify-content: flex-end; }
+  .threshold h1 { font-size: 1.9rem; }
+  .threshold p { font-size: 1rem; }
+  .book-head h1 { font-size: 1.8rem; }
 }
