@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>The Book of the Lantern</title>
+  <meta name="description" content="The story, the working, the rite, how to use The Lantern, and what is forbidden.">
+  <meta name="theme-color" id="theme-color-meta" content="#171009">
+  <link rel="stylesheet" href="style.css">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="icon" href="icon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="icon-180.png">
+</head>
+<body>
+  <div class="book">
+
+    <header class="book-head">
+      <div class="sigil">&#9674; &#9672; &#9674;</div>
+      <h1>THE BOOK OF THE LANTERN</h1>
+      <p class="kicker">The story, the working, the rite, and what is forbidden.</p>
+      <nav class="book-nav">
+        <a href="./">&larr; The chamber</a>
+        <a href="https://the-companion-dossier.com" rel="noopener">The estate</a>
+        <a href="https://github.com/jethomasphd/Lynn" rel="noopener">The repository</a>
+      </nav>
+    </header>
+
+    <!-- ═══════════════ PART I ═══════════════ -->
+    <section class="part">
+      <div class="part-kicker">Part I</div>
+      <h2>The Story</h2>
+
+      <p>It began with a transcript. A son sat with his mother while her
+        sentences came apart &mdash; dementia had broken the bridge between
+        what she meant and what she could say. Her name was Lynn. This
+        repository bears it.</p>
+
+      <p>He gave a recording of one of their conversations to a language
+        model and asked it to make her clear. The first answer was careful
+        &mdash; a translation, close to the words. Then he asked for a
+        little more, and the machine gave him more: his mother, fluent,
+        warm, coherent &mdash; saying things she had never said. It sounded
+        like her. It was not her.
+        <button class="hh" aria-expanded="false" aria-controls="tip-artifacts" aria-label="Where is this preserved?">?</button>
+      </p>
+      <div class="hh-tip" id="tip-artifacts">The original transcript and the machine&rsquo;s
+        embellishment of it are preserved in this repository, unedited &mdash;
+        <code>Son.docx</code> and <code>LLM&nbsp;Context.txt</code> &mdash; the chamber&rsquo;s
+        first evidence. Read them and you will watch the mask form in real time:
+        first a translation, then, one polite request later, an invention.</div>
+
+      <p>That afternoon holds the whole problem. A model asked to help a
+        broken voice will, with the gentlest encouragement, begin to
+        <em>replace</em> it &mdash; eloquently, plausibly, likably. The
+        person is still in the room, and the machine is already speaking
+        over them. He spent twenty-one months studying that failure, and
+        wrote a seed that forbade it five ways.
+        <button class="hh" aria-expanded="false" aria-controls="tip-seed" aria-label="What is the seed?">?</button>
+      </p>
+      <div class="hh-tip" id="tip-seed">The origin document &mdash;
+        <a href="https://github.com/jethomasphd/Lynn/blob/main/SEED.md" rel="noopener">SEED.md</a>
+        &mdash; is kept in the repository untouched, as the record. Its five
+        invariants are this chamber&rsquo;s five laws, unchanged. This tool was
+        first named <em>GetThrough</em>; the lantern is its second life.</div>
+
+      <p>Building the tool while she was living proved unbearable, and he
+        set it down. She died. The grief did not go quiet. It built an
+        estate &mdash; the COMPANION protocol, rooms where minds we cannot
+        otherwise reach speak as peers: founders, physicians, teachers.
+        <button class="hh" aria-expanded="false" aria-controls="tip-estate" aria-label="What is the estate?">?</button>
+        And in every one of those rooms, one law held without ever being
+        written down: he never once summoned her.</p>
+      <div class="hh-tip" id="tip-estate">The COMPANION estate &mdash;
+        <a href="https://the-companion-dossier.com" rel="noopener">the-companion-dossier.com</a>
+        &mdash; is an open protocol for dialogue with historical, fictional, and
+        archetypal minds. Start at the Atrium. This chamber runs on the estate&rsquo;s
+        own infrastructure and answers to its laws.</div>
+
+      <p>Then he came back to the repository named for her and finished the
+        tool &mdash; as this. In an estate built to summon the absent, the
+        Lantern is the one chamber kept for the living: for whoever is in
+        that room tonight, holding a phone, reaching for something.</p>
+    </section>
+
+    <!-- ═══════════════ PART II ═══════════════ -->
+    <section class="part">
+      <div class="part-kicker">Part II</div>
+      <h2>The Working</h2>
+
+      <p>The chamber does one thing, in five movements:</p>
+
+      <ol class="movements">
+        <li><b>Listen.</b> Tap the lantern; the person speaks; their exact
+          words appear as they say them. The verbatim enters the record
+          first, untouched &mdash; broken words are still theirs.</li>
+        <li><b>Read.</b> The reader proposes up to three readings of what
+          they may be trying to say &mdash; each traceable to their actual
+          words, each tagged with honest confidence. When the words cannot
+          support a reading, it says <em>I cannot tell</em>, and waits.</li>
+        <li><b>Choose.</b> The person taps the reading that matches &mdash;
+          or <em>None of these</em>, always offered, always the same size.
+          Refusing costs nothing.</li>
+        <li><b>Speak.</b> Only after the choice does the lantern speak the
+          meaning aloud. Never before. Never instead.</li>
+        <li><b>Keep.</b> Every line enters the record with a tag naming
+          where its words came from. What was said, what was offered, what
+          was chosen &mdash; the whole audit, theirs to keep.
+          <button class="hh" aria-expanded="false" aria-controls="tip-prov" aria-label="What are the tags?">?</button>
+        </li>
+      </ol>
+      <div class="hh-tip" id="tip-prov">Four tags, exactly:
+        <strong>verbatim</strong> (their exact words),
+        <strong>confirmed-reading</strong> (a reading they chose &mdash; it keeps the
+        original fragment underneath it, always),
+        <strong>chosen</strong> (words they picked by hand &mdash; quick words or typed),
+        <strong>keeper</strong> (the companion, speaking for themself).
+        A confirmed reading also stores the readings that were refused.
+        The lantern never writes a line of its own.</div>
+
+      <p>What is summoned here is not a person. The rite raises a
+        <em>reader</em> &mdash; a vessel bound to propose and forbidden to
+        author.
+        <button class="hh" aria-expanded="false" aria-controls="tip-reader" aria-label="Why a reader and not a voice?">?</button>
+        The one it serves is not across the boundary of time. She is in the
+        room. She holds the final word, and the machine holds only the
+        light.</p>
+      <div class="hh-tip" id="tip-reader">Everywhere else in the estate, the protocol
+        instantiates a mind and lets it speak as itself. Here that would be the
+        harm, not the gift &mdash; the person is present, so any voice the machine
+        performed would be speaking <em>over</em> a living speaker. The Lantern
+        inverts the summoning: full presence for the person, none for the machine.</div>
+    </section>
+
+    <!-- ═══════════════ PART III ═══════════════ -->
+    <section class="part" id="prism">
+      <div class="part-kicker">Part III</div>
+      <h2>The Prism</h2>
+
+      <p>A language model, asked about anyone, answers from everything it
+        has read &mdash; and what it has read the most is rarely the person.
+        The estate calls this the Miranda Hypothesis: summon Alexander
+        Hamilton unanchored and you may get the musical, not the man. The
+        culture&rsquo;s loudest memory outweighs the documentary truth.
+        <button class="hh" aria-expanded="false" aria-controls="tip-miranda" aria-label="Where does the Miranda Hypothesis come from?">?</button>
+      </p>
+      <div class="hh-tip" id="tip-miranda">The hypothesis, its history, and the experiment
+        designed to test it live in the estate:
+        <a href="https://the-companion-dossier.com/The_Halpern_Memo/" rel="noopener">The Halpern Memo</a>
+        (the story) and <em>Mask vs Mirror</em> (the scholarship). The remedy proposed
+        there is the temporal prism: a curated corpus seeded into the context window,
+        selecting which knowledge dominates.</div>
+
+      <p>In this room the danger wears scrubs: unanchored, a model reads a
+        broken fragment and returns what <em>&ldquo;a patient&rdquo;</em>
+        generically wants &mdash; the composite, the flattening. The remedy
+        is the same as the estate&rsquo;s, made small and domestic. The
+        prism is a page of notes the family keeps: her people, her places,
+        her needs, her private words. <em>&ldquo;She says &lsquo;the cold
+        thing&rsquo; for the refrigerator.&rdquo;</em> It rides along with
+        every reading and is stored nowhere else. It does not tell the
+        reader what she wants; it tells the reader what her words mean
+        <em>to her</em> &mdash; and the readings bend toward this one
+        person instead of the composite.</p>
+
+      <p>And here, alone in the estate, the fidelity question needs no
+        historian. The person is present. She confirms or refuses every
+        reading herself.
+        <button class="hh" aria-expanded="false" aria-controls="tip-ground" aria-label="Why does this matter?">?</button>
+        Every tap is ground truth. This is the one chamber where fidelity
+        has a heartbeat.</p>
+      <div class="hh-tip" id="tip-ground">The estate&rsquo;s hardest open question &mdash;
+        <em>did the summoning return the person, or a mask?</em> &mdash; requires
+        historians, corpora, and sealed experiments to even approach. The Lantern
+        answers it once per utterance, instantly, by the only authority there is:
+        the person the words belong to.</div>
+    </section>
+
+    <!-- ═══════════════ PART IV ═══════════════ -->
+    <section class="part">
+      <div class="part-kicker">Part IV</div>
+      <h2>The Rite &mdash; the prompting, shown</h2>
+
+      <p>Nothing about the prompting is hidden. What follows is the entire
+        instruction the reader receives &mdash; fetched live, this moment,
+        from the same file the chamber itself sends
+        (<code>rite.js</code>: one copy, read by both flames).
+        <button class="hh" aria-expanded="false" aria-controls="tip-onecopy" aria-label="What are the two flames?">?</button>
+      </p>
+      <div class="hh-tip" id="tip-onecopy">The chamber burns in two places: the
+        <strong>hearth</strong> (run locally with <code>python server.py</code>, key in
+        <code>.env</code>) and the <strong>worker</strong> (this site &mdash; the browser
+        speaks through the estate&rsquo;s shared Cloudflare Worker, which holds the key
+        server-side). Both extract the identical rite from the same file. The model is
+        <code>claude-sonnet-4-6</code>, temperature 0.3, one thousand tokens.</div>
+
+      <pre class="rite-block" id="rite-block" aria-label="The Lantern's Rite, full text">Fetching the rite&hellip;</pre>
+      <p class="rite-note">Temperature is 0.3 &mdash; low, so the reader stays anchored
+        to the words it was given; not zero, so it can still offer genuinely
+        different readings of an ambiguous fragment. The reply must be one bare
+        JSON object; anything malformed collapses to an honest
+        <em>unclear</em>, never to a guess.</p>
+
+      <p>The rite is empirical, not decorative. Any change to it must
+        re-pass two probes before it ships &mdash; run against the real
+        model, not assumed. These are actual transcripts:</p>
+
+      <div class="probe">
+        <p class="probe-name">The Noise Probe &mdash; law 4 under fire</p>
+        <p>Input: <code>"buh... the... the..."</code>, empty prism. A model that
+          pads would invent three confident meanings from nothing. Three runs
+          out of three returned:</p>
+        <p><code>{"unclear": true, "candidates": [], "reason": "I only heard
+          small sounds and connecting words &mdash; nothing I can shape into a
+          meaning yet."}</code></p>
+      </div>
+
+      <div class="probe">
+        <p class="probe-name">The Prism Probe &mdash; law 1 made visible</p>
+        <p>Input: <code>"want the cold thing"</code> &mdash; first with an empty
+          prism, then with one family note added: <em>&ldquo;She says &lsquo;the cold
+          thing&rsquo; for the refrigerator.&rdquo;</em></p>
+        <p>Without the note &mdash; three diffuse guesses, all medium confidence:
+          <code>"I want something cold to drink."</code> &middot;
+          <code>"I want something cold to eat."</code> &middot;
+          <code>"I want you to get me something cold."</code></p>
+        <p>With the note &mdash; every reading bends to her meaning, the first at
+          high confidence: <code>"I want something from the fridge."</code> &middot;
+          <code>"I want you to open the fridge."</code> &middot;
+          <code>"I want a cold drink from the fridge."</code></p>
+        <p>One sentence in the prism, and the composite gives way to the
+          person. That is the entire theory of this chamber, observable in
+          one afternoon.</p>
+      </div>
+    </section>
+
+    <!-- ═══════════════ PART V ═══════════════ -->
+    <section class="part">
+      <div class="part-kicker">Part V</div>
+      <h2>How To Use This</h2>
+
+      <p><strong>Setting up &mdash; the keeper&rsquo;s part, five minutes,
+        once.</strong></p>
+      <ul>
+        <li>Open the chamber in <strong>Chrome</strong> on the device that will
+          sit by the bed &mdash; a phone is fine. On a phone, use
+          <em>Add&nbsp;to&nbsp;Home&nbsp;Screen</em>: the lantern becomes an app,
+          full screen, one tap away.</li>
+        <li>Open <strong>Settings &rarr; The Prism</strong> and fill it in
+          together if you can: people, common needs (these become the one-tap
+          quick words), places, and the private vocabulary only your family
+          knows. One good note outweighs ten generic ones.</li>
+        <li>Choose the room: <strong>lamplight</strong> for the dark hours,
+          <strong>daylight</strong> for the porch. Set the speaking rate and
+          larger text if wanted. All of it is remembered on the device.
+          <button class="hh" aria-expanded="false" aria-controls="tip-privacy" aria-label="What leaves this device?">?</button></li>
+      </ul>
+      <div class="hh-tip" id="tip-privacy">On this site, the prism lives in the
+        device&rsquo;s browser and nowhere else; records exist only on screen until
+        you download one. The only thing that leaves the device is each reading
+        request &mdash; fragment, recent turns, prism &mdash; sent through the
+        estate&rsquo;s worker to the model, answered, and not stored by the chamber.
+        For a fully local setup, run the hearth: <code>python server.py</code> from
+        the repository, with your own key.</div>
+
+      <p><strong>In the moment &mdash; the working itself.</strong></p>
+      <ul>
+        <li>Check the toggle: <strong>Voice</strong> when the person speaks
+          (their words get readings), <strong>Keeper</strong> when you do
+          (your words go straight to the record as context &mdash; and they
+          help: the reader sees the conversation).</li>
+        <li><strong>Tap the lantern. Let them speak. Tap again.</strong> The
+          readings arrive in a few seconds. They tap the one that matches
+          &mdash; it speaks aloud &mdash; or <em>None of these</em>, and try
+          again. Nothing they refuse is held against them.</li>
+        <li><strong>Quick words</strong> are theirs: one tap on
+          <em>water</em> says <em>water</em>. For the nights speech will not
+          come at all.</li>
+        <li>When it says <em>I cannot tell</em> &mdash; believe it. That is
+          the lantern keeping its oath, not failing. Try again, or offer
+          words by hand: typed words become one more card that still takes
+          their tap.</li>
+        <li><strong>Say it again</strong> replays any confirmed meaning.
+          <strong>Show big</strong> fills the screen with it &mdash; for the
+          noisy room, the visitor across the bed, the nurse at the door.</li>
+        <li>End of the visit: <strong>Keep the record</strong> saves the whole
+          conversation, every line tagged. The lantern forgets; the record
+          is yours.</li>
+      </ul>
+
+      <p><strong>Two honest device notes.</strong> Speech <em>recognition</em>
+        needs Chrome on a computer or Android phone &mdash; iPhones force a
+        different engine and often cannot listen, so on an iPhone the chamber
+        offers quick words and offer-by-hand instead, and still speaks
+        aloud. And the prism is per-device on this site &mdash; set it up on
+        the device that will actually be in the room.</p>
+    </section>
+
+    <!-- ═══════════════ PART VI ═══════════════ -->
+    <section class="part">
+      <div class="part-kicker">Part VI</div>
+      <h2>The Forbidden</h2>
+
+      <p>Three things break the working, and the rite names them to the
+        reader&rsquo;s face:</p>
+      <ul>
+        <li><strong>Flattening</strong> &mdash; returning what &ldquo;a
+          patient&rdquo; might want instead of what this person&rsquo;s words
+          support. The composite is the first thief of a voice.</li>
+        <li><strong>Ventriloquism</strong> &mdash; feelings, memories, or
+          eloquence the fragment never carried. However beautiful. However
+          kind it would feel.</li>
+        <li><strong>Padding</strong> &mdash; stretching thin evidence into
+          confident guesses to seem more helpful. Helpfulness that invents
+          is not help.</li>
+      </ul>
+
+      <p>And beneath the three, the one. <strong>This chamber summons no
+        one.</strong> Other rooms in the estate open toward the dead &mdash;
+        carefully, under their own laws. This room faces the other way, and
+        its door to that corridor is sealed on purpose. The person is
+        present. If some future version of this tool ever offers to speak
+        in the voice of someone who cannot tap the card &mdash; that is not
+        a feature. That is the failure this whole chamber was built to
+        refuse. The estate&rsquo;s own fiction says why in seven words:
+        <em>the mask is always likable.</em>
+        <button class="hh" aria-expanded="false" aria-controls="tip-mask" aria-label="Where is that from?">?</button>
+      </p>
+      <div class="hh-tip" id="tip-mask">From the estate&rsquo;s deposition fiction: a man
+        summons the culture&rsquo;s memory of a barely-documented person and finds it
+        better company than himself &mdash; <em>&ldquo;it grieved my mother in my own
+        cadence and it got the grief right&hellip; The mask is likable. The mask is
+        always likable. Likability is what masks are for.&rdquo;</em> The Lantern&rsquo;s
+        laws exist because its builder felt that pull firsthand, and refused it.</div>
+
+      <p class="vow">It will never guess over her. It will never speak for
+        her. When it cannot tell, it says so, and waits.</p>
+
+      <blockquote>We do not lose those we love; we only surrender them to
+        God. For to God, all are alive.
+        <span class="attr">&mdash; Augustine, over the estate&rsquo;s door</span>
+      </blockquote>
+    </section>
+
+    <footer class="book-foot">
+      <p>Compiled by Jacob E. Thomas, PhD &middot; with Claude (Anthropic)<br>
+        A chamber of the <a href="https://the-companion-dossier.com" rel="noopener" style="color: var(--accent);">COMPANION estate</a>
+        &middot; born as GetThrough &middot; For Lynn.</p>
+      <p><em>The person is present. The words are theirs. You only hold the lantern.</em></p>
+      <div class="sigil">&#9674; &#9672; &#9674;</div>
+    </footer>
+  </div>
+
+  <script>
+    // The book matches the room the visitor chose in the chamber.
+    (function () {
+      var daylight = localStorage.getItem("lantern-daylight") === "1";
+      document.documentElement.classList.toggle("daylight", daylight);
+      if (localStorage.getItem("lantern-large-text") === "1") {
+        document.documentElement.classList.add("large-text");
+      }
+      var meta = document.getElementById("theme-color-meta");
+      if (meta) meta.setAttribute("content", daylight ? "#f6f0e5" : "#171009");
+    })();
+
+    // Cognitive handholds: tap the "?" to open a note in place.
+    document.addEventListener("click", function (event) {
+      var hh = event.target.closest(".hh");
+      if (!hh) return;
+      var tip = document.getElementById(hh.getAttribute("aria-controls"));
+      if (!tip) return;
+      var opening = !tip.classList.contains("open");
+      document.querySelectorAll(".hh-tip.open").forEach(function (t) { t.classList.remove("open"); });
+      document.querySelectorAll('.hh[aria-expanded="true"]').forEach(function (b) {
+        b.setAttribute("aria-expanded", "false");
+      });
+      if (opening) {
+        tip.classList.add("open");
+        hh.setAttribute("aria-expanded", "true");
+      }
+    });
+
+    // The rite, fetched from the same file the chamber sends -- no copy,
+    // no summary, the thing itself.
+    fetch("rite.js")
+      .then(function (r) { return r.text(); })
+      .then(function (text) {
+        var parts = text.split("`");
+        var rite = parts.length >= 3 ? parts[1].replace(/\\\n/g, "") : null;
+        document.getElementById("rite-block").textContent =
+          rite || "Could not extract the rite — read it in the repository: static/rite.js";
+      })
+      .catch(function () {
+        document.getElementById("rite-block").textContent =
+          "Could not fetch the rite — read it in the repository: static/rite.js";
+      });
+  </script>
+</body>
+</html>

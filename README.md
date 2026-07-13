@@ -83,11 +83,39 @@ not a style choice.
 
 ---
 
+## How to use this
+
+The full guide — with the story and cognitive handholds — lives on the
+site: **[The Book of the Lantern](static/about.html)** (`/about.html` on any
+deployment). The short form:
+
+**Once, as the keeper:** open the chamber in Chrome on the bedside device
+(on a phone, *Add to Home Screen* — it becomes a full-screen app). Open
+Settings → The Prism and fill it in together: people, common needs (these
+become the one-tap quick words), places, private vocabulary. Choose
+lamplight or daylight, rate, text size.
+
+**In the moment:** set the toggle — **Voice** for the person (their words
+get readings), **Keeper** for you (straight to the record, as context).
+Tap the lantern, let them speak, tap again. They tap the reading that
+matches — it speaks — or "None of these," and try again. Quick words speak
+in one tap. When it says *I cannot tell*, believe it; offer words by hand
+if speech won't come. **Keep the record** downloads the whole conversation,
+every line tagged.
+
+**Devices:** speech recognition needs Chrome on desktop or Android;
+iPhones usually can't listen (WebKit), so the chamber shows the
+offer-by-hand row there — quick words, typing, and speech output all still
+work. The prism is per-device in cloud mode.
+
 ## The chamber
 
 - **The threshold** — a first-visit arrival page for the one who carried
   the lantern here. Read once, cross, and it stands open (re-readable from
   settings).
+- **The Book** (`about.html`) — the story, the conceptual model, the rite
+  rendered live from its source file, the how-to, and the forbidden — with
+  the estate's cognitive handholds (tap the gold `?` marks) throughout.
 - **The lantern** — one giant glowing button. Tap to light it, speak, tap
   again. The person's words appear live, verbatim, as they speak.
 - **The readings** — up to three candidate meanings with honest confidence
@@ -116,6 +144,10 @@ not a style choice.
 - `static/rite.js` — the Lantern's Rite, one copy read by both flames.
 - `static/config.js` — deployment configuration: the worker URL and model.
   Nothing secret.
+- `static/about.html` — the Book of the Lantern: story, working, rite,
+  how-to, and the forbidden, with cognitive handholds.
+- `static/manifest.webmanifest` + `icon*` — Add-to-Home-Screen identity:
+  the chamber installs as a full-screen app on phones.
 - `prism.json` — the person-owned prism, the only personalization
   mechanism. It selects which knowledge dominates a reading — this person's
   own words and world, not the culture's composite patient. Editable and
@@ -126,6 +158,79 @@ not a style choice.
   reading requests to the model.
 
 ---
+
+## The Rite — documenting the prompting
+
+The system prompt is the heart of the product, and nothing about it is
+hidden. It lives in **`static/rite.js` — one copy, read by both flames**:
+`server.py` extracts the text between the backticks at import (mirroring
+JS line-continuation semantics, so both are byte-identical), and the
+worker chamber sends the same file from the browser. The Book renders it
+live at `/about.html`.
+
+**Anatomy of a reading request.** System = the rite. The user message is
+three plainly labeled blocks, so anyone auditing a request can read
+exactly what the model was given:
+
+```
+VERBATIM FRAGMENT (what the person just said): "..."
+RECENT CONVERSATION (oldest first):            voice/keeper turns, max 6
+THE PRISM (kept by the person and family):     only the fields they filled
+```
+
+Model `claude-sonnet-4-6`, temperature `0.3` (low enough to stay anchored
+to the evidence, warm enough to offer genuinely different readings),
+`max_tokens 1000`. The reply must be one bare JSON object —
+`{"unclear": ..., "candidates": [{"text", "confidence"}]}` — and both
+flames force whatever comes back into that contract: malformed output,
+unknown confidence values, empty candidates, network failure — all of it
+collapses to an honest *unclear*, never to a guess.
+
+**How the laws become instructions.** Each law in the rite is the
+operational form of an invariant: *evidence only* (law 1) bounds every
+candidate to words actually present; *first-person, under 20 words*
+(law 2) keeps candidates speakable; *aim for three, never three
+rewordings* (law 3) makes the choice real; *unclear is a correct answer*
+(law 4) makes honesty cheaper than invention; *honest confidence* (law 5)
+displays uncertainty instead of hiding it. THE FORBIDDEN names the three
+failure modes head-on — flattening, ventriloquism, padding — because
+models respond to named prohibitions better than implied ones.
+
+**The rite is empirical.** Any change to `rite.js` must re-pass two
+probes against the real model before it ships:
+
+- **The noise probe** (law 4): `"buh... the... the..."` with an empty
+  prism must return `unclear` — run it three times; padding is a fail.
+- **The prism probe** (law 1): `"want the cold thing"` with and without
+  the family note *"She says 'the cold thing' for the refrigerator."* —
+  the note must measurably bend the readings toward the fridge.
+
+Run them against the hearth with curl:
+
+```
+curl -X POST http://localhost:8000/reading -H 'Content-Type: application/json' \
+  -d '{"fragment":"buh... the... the...","recent_turns":[],"context":{}}'
+
+curl -X POST http://localhost:8000/reading -H 'Content-Type: application/json' \
+  -d '{"fragment":"want the cold thing","recent_turns":[],
+       "context":{"notes_from_family":"She says '\''the cold thing'\'' for the refrigerator."}}'
+```
+
+Last verified run: noise → `unclear` 3/3; prism → without the note, three
+diffuse "medium" readings and no mention of the fridge; with it, all
+three readings anchored on the refrigerator, the first at "high."
+
+## The Forbidden
+
+Three named failure modes break the working — **flattening** (returning
+the composite patient instead of this person), **ventriloquism** (feelings
+or eloquence the fragment never carried), **padding** (stretching thin
+evidence into confident guesses). And beneath them, the one: **this
+chamber summons no one.** The estate keeps other rooms, under other laws,
+for minds we cannot otherwise reach. This room faces the living, and its
+door to that corridor is sealed on purpose. If a future version ever
+offers to speak in the voice of someone who cannot tap the card, that is
+not a feature — it is the failure this chamber was built to refuse.
 
 ## Lineage — the loop, closed
 

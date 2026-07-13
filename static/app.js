@@ -197,9 +197,14 @@ let recognition = null;
 
 function setupRecognition() {
   if (!SpeechRecognitionImpl) {
+    // Many iPhones land here: WebKit can speak but not reliably listen.
+    // The chamber stays honest and stays usable -- quick words and the
+    // offer-by-hand row below carry the person the whole way.
     $("lantern-status").textContent =
-      "This browser has no speech recognition. Please use Chrome.";
+      "This browser can't hear speech (iPhones often can't). " +
+      "Quick words and offering by hand still work — or use Chrome on a computer or Android.";
     $("lantern-btn").disabled = true;
+    $("hand-row").classList.remove("hidden");
     return;
   }
 
@@ -374,6 +379,8 @@ function recentTurns() {
 function renderCards(candidates) {
   const box = $("cards");
   box.innerHTML = "";
+  // On a phone the readings can land below the fold -- bring them up.
+  $("response-area").scrollIntoView({ behavior: "smooth", block: "nearest" });
   candidates.forEach((candidate, i) => {
     box.appendChild(
       buildCard({
@@ -473,10 +480,44 @@ function showUnclear(reason) {
 function clearResponseArea() {
   state.pending = null;
   $("response-area").classList.add("hidden");
+  document.querySelector(".fragment-echo").classList.remove("hidden");
   $("cards").innerHTML = "";
   $("unclear-panel").classList.add("hidden");
   $("thinking").classList.add("hidden");
   $("type-input").value = "";
+}
+
+/* Offer-by-hand without a spoken fragment (devices that can't hear):
+ * the typed words become one card the person still taps. On their tap
+ * they are spoken and recorded as "chosen" -- the person picked them by
+ * hand; there is no fragment being interpreted. */
+function offerHandWords() {
+  const text = $("hand-input").value.trim();
+  if (!text) return;
+  clearResponseArea();
+  $("response-area").classList.remove("hidden");
+  document.querySelector(".fragment-echo").classList.add("hidden");
+  $("response-area").scrollIntoView({ behavior: "smooth", block: "nearest" });
+  const box = $("cards");
+  box.appendChild(
+    buildCard({
+      number: "✎",
+      text,
+      onTap: () => {
+        chooseQuickWord(text); // speaks inside the tap, records as chosen
+        clearResponseArea();
+        $("hand-input").value = "";
+      },
+    })
+  );
+  box.appendChild(
+    buildCard({
+      number: "✕",
+      text: "Not this — clear it.",
+      none: true,
+      onTap: () => { clearResponseArea(); },
+    })
+  );
 }
 
 /* Words offered by hand become one more reading card. The person still
@@ -865,6 +906,28 @@ function init() {
     if (event.key === "Enter") offerTypedCandidate();
   });
 
+  $("hand-add").addEventListener("click", offerHandWords);
+  $("hand-input").addEventListener("keydown", (event) => {
+    if (event.key === "Enter") offerHandWords();
+  });
+
+  // Cognitive handholds: small "?" doors that open a note in place.
+  document.addEventListener("click", (event) => {
+    const hh = event.target.closest(".hh");
+    if (!hh) return;
+    const tip = document.getElementById(hh.getAttribute("aria-controls"));
+    if (!tip) return;
+    const opening = !tip.classList.contains("open");
+    // one open at a time keeps the room calm
+    document.querySelectorAll(".hh-tip.open").forEach((t) => t.classList.remove("open"));
+    document.querySelectorAll('.hh[aria-expanded="true"]').forEach((b) =>
+      b.setAttribute("aria-expanded", "false"));
+    if (opening) {
+      tip.classList.add("open");
+      hh.setAttribute("aria-expanded", "true");
+    }
+  });
+
   $("show-big").addEventListener("click", () => {
     $("show-big").classList.add("hidden");
   });
@@ -889,12 +952,15 @@ function init() {
     localStorage.setItem("lantern-rate", String(state.voiceRate));
   });
 
-  // Daylight / lamplight, remembered.
+  // Daylight / lamplight, remembered. The browser chrome (address bar,
+  // status bar on phones) follows the room via the theme-color meta.
   const applyLight = (daylight) => {
     document.documentElement.classList.toggle("daylight", daylight);
     $("light-toggle").textContent = daylight ? "Daylight: on" : "Daylight: off";
     $("light-toggle").setAttribute("aria-pressed", String(daylight));
     localStorage.setItem("lantern-daylight", daylight ? "1" : "0");
+    const meta = document.getElementById("theme-color-meta");
+    if (meta) meta.setAttribute("content", daylight ? "#f6f0e5" : "#171009");
   };
   applyLight(localStorage.getItem("lantern-daylight") === "1");
   $("light-toggle").addEventListener("click", () =>
