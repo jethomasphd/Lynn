@@ -6,8 +6,8 @@
 
 Someone you love is speaking, and the words are breaking apart on the way
 out — aphasia, dementia, the bridge between meaning and mouth giving way.
-You are in the room with them, reaching for something. This is that
-something.
+The Lantern is a small, honest tool that helps you understand them —
+without ever speaking for them.
 
 **The Lantern listens, and shows their exact words.** Then it offers up to
 three readings of what they might mean, as large tappable cards. **They
